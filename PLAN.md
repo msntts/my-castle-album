@@ -44,7 +44,7 @@
 ## Phase 2b: ドメインモデル再設計 [REVIEW]
 
 - [x] 2b-1. ドメインモデル修正（Castle: visitedAt削除 / Photo: capturedAt・dataUrl削除しcaptionのみ）
-- [ ] 2b-2. ImageStorage インターフェース定義（save / getUrl）
+- [x] 2b-2. ImageStorage インターフェース定義（save / getUrl）
 - [ ] 2b-3. ユビキタス言語ドキュメント更新
 
 ## Phase 3: インフラ層（LocalStorage）
