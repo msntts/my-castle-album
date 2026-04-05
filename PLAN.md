@@ -8,7 +8,8 @@
 - モノレポ（pnpm workspaces）
   - `packages/frontend` — React + TypeScript（Vite）
   - `packages/shared` — 型定義・ユビキタス言語（将来的に backend と共有）
-- Google Maps JavaScript API（地図・城検索）
+- Leaflet.js + OpenStreetMap（地図・ピン表示、APIキー不要）
+- Nominatim（OSMジオコーディング、城名検索）
 - localStorage（初回ストレージ、後にAWS S3/DynamoDBへ差し替え）
 - CSS Modules or Tailwind CSS
 
@@ -17,7 +18,7 @@
   - 日本地図上に訪問済み城がピンで表示される
   - ピンをクリックすると城の名前・写真ギャラリーが開く
 - **管理モード（アドミン）**
-  - Google Maps の検索機能でお城を探してピンを追加できる
+  - Nominatim（OSM）でお城を名前検索してピンを追加できる
   - 城ごとに写真をアップロードできる（Base64でlocalStorageに保存）
   - 管理/閲覧モードの切り替えボタン
 
@@ -44,7 +45,7 @@
 
 ## Phase 4: 地図・ピン表示 [REVIEW]
 
-- [ ] 4-1. Google Maps API のセットアップ（環境変数・ローダー）
+- [ ] 4-1. Leaflet + react-leaflet インストール・型定義セットアップ
 - [ ] 4-2. 日本地図表示コンポーネント（`CastleMap`）
 - [ ] 4-3. 城ピンコンポーネント（`CastlePin`）
 - [ ] 4-4. ピンクリックで城詳細パネルを開く
@@ -57,7 +58,7 @@
 ## Phase 6: 管理機能 [REVIEW]
 
 - [ ] 6-1. 管理/閲覧モード切り替え
-- [ ] 6-2. Google Maps Places API でお城を検索して追加する機能
+- [ ] 6-2. Nominatim でお城を名前検索して追加する機能
 - [ ] 6-3. 写真アップロード機能（Base64 → localStorage）
 
 ---
@@ -72,6 +73,7 @@
 - `Castle` ドメインも visitedAt 不要。castleId, name, location のみ
 - モノレポ：pnpm workspaces を採用。将来 `packages/backend`（AWS Lambda等）を追加しやすい構成
 - クロスプラットフォーム：`.gitattributes` で LF 統一、npm scripts は `cross-env` 使用、パス区切り文字は `/` に統一
+- 地図：Google Maps を使わず Leaflet.js + OpenStreetMap を採用（APIキー・クレカ登録不要）。城検索は Nominatim（無料）
 
 ## 完了済みフェーズ
 - Phase 1: プロジェクト基盤 `8057337..3ad56e1`
