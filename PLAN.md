@@ -43,11 +43,6 @@
 
 
 
-## Phase 5: 写真ギャラリー [REVIEW]
-
-- [x] 5-1. 城詳細モーダルコンポーネント（`CastleDetail`）
-- [x] 5-2. 写真ギャラリーコンポーネント（`PhotoGallery`）
-
 ## Phase 6: 管理機能 [REVIEW]
 
 - [ ] 6-1. 管理/閲覧モード切り替え
@@ -74,3 +69,4 @@
 - Phase 2b: ドメインモデル再設計 `c83e835..5dd34d6`
 - Phase 3: インフラ層（LocalStorage） `a01871c..e37be15`
 - Phase 4: 地図・ピン表示 `c71d76c..8dbdbbb`
+- Phase 5: 写真ギャラリー `e01f071..e01f071`
