@@ -2,7 +2,7 @@ import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { Marker, Popup } from 'react-leaflet';
+import { Marker } from 'react-leaflet';
 import type { Castle } from '../../domain/castle/Castle';
 
 // Vite でビルドすると Leaflet の内部パス解決が壊れるため、_getIconUrl を削除してから上書き
@@ -30,8 +30,6 @@ export function CastlePin({ castle, onClick }: CastlePinProps) {
       eventHandlers={{
         click: () => onClick?.(castle),
       }}
-    >
-      <Popup>{castle.name}</Popup>
-    </Marker>
+    />
   );
 }
