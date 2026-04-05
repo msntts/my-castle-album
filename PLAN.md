@@ -45,7 +45,7 @@
 
 ## Phase 4: 地図・ピン表示 [REVIEW]
 
-- [ ] 4-1. Leaflet + react-leaflet インストール・型定義セットアップ
+- [x] 4-1. Leaflet + react-leaflet インストール・型定義セットアップ
 - [ ] 4-2. 日本地図表示コンポーネント（`CastleMap`）
 - [ ] 4-3. 城ピンコンポーネント（`CastlePin`）
 - [ ] 4-4. ピンクリックで城詳細パネルを開く
