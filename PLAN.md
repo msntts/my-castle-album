@@ -44,7 +44,7 @@
 
 - [x] 2-1. `Castle` エンティティ定義（id, name, location, visitedAt）
 - [x] 2-2. `Photo` エンティティ定義（id, castleId, dataUrl, capturedAt）
-- [ ] 2-3. `CastleRepository` インターフェース定義
+- [x] 2-3. `CastleRepository` インターフェース定義
 - [ ] 2-4. `PhotoRepository` インターフェース定義
 
 ## Phase 3: インフラ層（LocalStorage）
