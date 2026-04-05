@@ -45,7 +45,7 @@
 - [x] 1-2. クロスプラットフォーム対応（`.gitattributes` 改行コード統一、`cross-env` 導入）
 - [x] 1-3. `packages/frontend` — Vite + React + TypeScript 初期化
 - [x] 1-4. `packages/shared` — 共有型パッケージ初期化
-- [ ] 1-5. DDD ディレクトリ構造の骨格作成（domain / application / infrastructure / presentation）
+- [x] 1-5. DDD ディレクトリ構造の骨格作成（domain / application / infrastructure / presentation）
 - [ ] 1-6. ユビキタス言語ドキュメント（`docs/ubiquitous-language.md`）作成
 
 ## Phase 2: ドメインモデル [REVIEW]
