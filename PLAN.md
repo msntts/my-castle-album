@@ -41,11 +41,6 @@
 
 
 
-## Phase 2b: ドメインモデル再設計 [REVIEW]
-
-- [x] 2b-1. ドメインモデル修正（Castle: visitedAt削除 / Photo: capturedAt・dataUrl削除しcaptionのみ）
-- [x] 2b-2. ImageStorage インターフェース定義（save / getUrl）
-- [ ] 2b-3. ユビキタス言語ドキュメント更新
 
 ## Phase 3: インフラ層（LocalStorage）
 
@@ -86,3 +81,4 @@
 ## 完了済みフェーズ
 - Phase 1: プロジェクト基盤 `8057337..3ad56e1`
 - Phase 2: ドメインモデル `41158dc..207a691`
+- Phase 2b: ドメインモデル再設計 `c83e835..5dd34d6`
