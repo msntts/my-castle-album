@@ -45,7 +45,7 @@
 ## Phase 3: インフラ層（LocalStorage）
 
 - [x] 3-1. `LocalStorageCastleRepository` 実装
-- [ ] 3-2. `LocalStorageImageStorage` 実装（Base64保存）
+- [x] 3-2. `LocalStorageImageStorage` 実装（Base64保存）
 
 ## Phase 4: 地図・ピン表示 [REVIEW]
 
