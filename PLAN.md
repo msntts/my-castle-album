@@ -43,13 +43,6 @@
 
 
 
-## Phase 4: 地図・ピン表示 [REVIEW]
-
-- [x] 4-1. Leaflet + react-leaflet インストール・型定義セットアップ
-- [x] 4-2. 日本地図表示コンポーネント（`CastleMap`）
-- [x] 4-3. 城ピンコンポーネント（`CastlePin`）
-- [x] 4-4. ピンクリックで城詳細パネルを開く
-
 ## Phase 5: 写真ギャラリー [REVIEW]
 
 - [ ] 5-1. 城詳細モーダルコンポーネント（`CastleDetail`）
@@ -80,3 +73,4 @@
 - Phase 2: ドメインモデル `41158dc..207a691`
 - Phase 2b: ドメインモデル再設計 `c83e835..5dd34d6`
 - Phase 3: インフラ層（LocalStorage） `a01871c..e37be15`
+- Phase 4: 地図・ピン表示 `c71d76c..8dbdbbb`
