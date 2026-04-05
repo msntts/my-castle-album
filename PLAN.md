@@ -41,10 +41,16 @@
 
 
 
+## Phase 2b: ドメインモデル再設計 [REVIEW]
+
+- [ ] 2b-1. ドメインモデル修正（Castle: visitedAt削除 / Photo: capturedAt・dataUrl削除しcaptionのみ）
+- [ ] 2b-2. ImageStorage インターフェース定義（save / getUrl）
+- [ ] 2b-3. ユビキタス言語ドキュメント更新
+
 ## Phase 3: インフラ層（LocalStorage）
 
 - [ ] 3-1. `LocalStorageCastleRepository` 実装
-- [ ] 3-2. `LocalStoragePhotoRepository` 実装
+- [ ] 3-2. `LocalStorageImageStorage` 実装（Base64保存）
 
 ## Phase 4: 地図・ピン表示 [REVIEW]
 
@@ -71,7 +77,9 @@
 - Repository パターンで localStorage ↔ AWS の差し替えを吸収する
 - 戦略的DDD：ユビキタス言語を先に定義し、コードの命名に一貫して使う
 - 認証は初回スコープ外（管理モードはURLアクセスのみで保護なし）
-- 写真は Base64 で localStorage に保存（容量に注意。後でS3に差し替え）
+- 画像データはドメインに持たせない。`ImageStorage` インターフェースで隔離（localStorage実装ではBase64、将来S3 URLを返す）
+- `Photo` ドメインは画像メタデータのみ（photoId, castleId, caption）。日付系は不要と判断
+- `Castle` ドメインも visitedAt 不要。castleId, name, location のみ
 - モノレポ：pnpm workspaces を採用。将来 `packages/backend`（AWS Lambda等）を追加しやすい構成
 - クロスプラットフォーム：`.gitattributes` で LF 統一、npm scripts は `cross-env` 使用、パス区切り文字は `/` に統一
 
