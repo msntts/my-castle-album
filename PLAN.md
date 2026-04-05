@@ -39,14 +39,6 @@
 
 ---
 
-## Phase 1: プロジェクト基盤
-
-- [x] 1-1. モノレポ基盤セットアップ（pnpm workspaces + ルート設定）
-- [x] 1-2. クロスプラットフォーム対応（`.gitattributes` 改行コード統一、`cross-env` 導入）
-- [x] 1-3. `packages/frontend` — Vite + React + TypeScript 初期化
-- [x] 1-4. `packages/shared` — 共有型パッケージ初期化
-- [x] 1-5. DDD ディレクトリ構造の骨格作成（domain / application / infrastructure / presentation）
-- [ ] 1-6. ユビキタス言語ドキュメント（`docs/ubiquitous-language.md`）作成
 
 ## Phase 2: ドメインモデル [REVIEW]
 
@@ -90,4 +82,4 @@
 - クロスプラットフォーム：`.gitattributes` で LF 統一、npm scripts は `cross-env` 使用、パス区切り文字は `/` に統一
 
 ## 完了済みフェーズ
-<!-- Phase N: フェーズ名 `{開始ハッシュ}..{終了ハッシュ}` -->
+- Phase 1: プロジェクト基盤 `8057337..3ad56e1`
