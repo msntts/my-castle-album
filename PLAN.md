@@ -40,12 +40,6 @@
 ---
 
 
-## Phase 2: ドメインモデル [REVIEW]
-
-- [x] 2-1. `Castle` エンティティ定義（id, name, location, visitedAt）
-- [x] 2-2. `Photo` エンティティ定義（id, castleId, dataUrl, capturedAt）
-- [x] 2-3. `CastleRepository` インターフェース定義
-- [ ] 2-4. `PhotoRepository` インターフェース定義
 
 ## Phase 3: インフラ層（LocalStorage）
 
@@ -83,3 +77,4 @@
 
 ## 完了済みフェーズ
 - Phase 1: プロジェクト基盤 `8057337..3ad56e1`
+- Phase 2: ドメインモデル `41158dc..207a691`
