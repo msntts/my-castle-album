@@ -11,6 +11,7 @@ const repository = new LocalStorageCastleRepository();
 function App() {
   const [castles, setCastles] = useState<Castle[]>([]);
   const [selectedCastle, setSelectedCastle] = useState<Castle | null>(null);
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
   useEffect(() => {
     seedIfEmpty().then(() => repository.findAll()).then(setCastles);
@@ -28,10 +29,37 @@ function App() {
         ))}
       </CastleMap>
 
+      {/* モード切り替えボタン */}
+      <button
+        onClick={() => setIsAdminMode((v) => !v)}
+        style={{
+          position: 'absolute',
+          top: 16,
+          left: 16,
+          zIndex: 1000,
+          padding: '8px 14px',
+          borderRadius: '6px',
+          border: 'none',
+          cursor: 'pointer',
+          fontWeight: 'bold',
+          background: isAdminMode ? '#c0392b' : '#2c3e50',
+          color: 'white',
+        }}
+      >
+        {isAdminMode ? '管理モード中' : '管理モードへ'}
+      </button>
+
       {selectedCastle && (
         <CastleDetail
           castle={selectedCastle}
+          isAdminMode={isAdminMode}
           onClose={() => setSelectedCastle(null)}
+          onCastleUpdated={(updated) => {
+            setCastles((prev) =>
+              prev.map((c) => (c.castleId === updated.castleId ? updated : c))
+            );
+            setSelectedCastle(updated);
+          }}
         />
       )}
     </div>
