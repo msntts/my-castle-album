@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Castle } from './domain/castle/Castle';
 import { LocalStorageCastleRepository } from './infrastructure/localStorage/LocalStorageCastleRepository';
 import { seedIfEmpty } from './infrastructure/localStorage/seedData';
+import { AddCastleForm } from './presentation/components/AddCastleForm';
 import { CastleDetail } from './presentation/components/CastleDetail';
 import { CastleMap } from './presentation/components/CastleMap';
 import { CastlePin } from './presentation/components/CastlePin';
@@ -48,6 +49,16 @@ function App() {
       >
         {isAdminMode ? '管理モード中' : '管理モードへ'}
       </button>
+
+      {isAdminMode && (
+        <AddCastleForm
+          onAdd={async (castleWithoutPhotos) => {
+            const castle: Castle = { ...castleWithoutPhotos, photos: [] };
+            await repository.save(castle);
+            setCastles((prev) => [...prev, castle]);
+          }}
+        />
+      )}
 
       {selectedCastle && (
         <CastleDetail
