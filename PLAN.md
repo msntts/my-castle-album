@@ -42,11 +42,6 @@
 
 
 
-## Phase 3: インフラ層（LocalStorage）
-
-- [x] 3-1. `LocalStorageCastleRepository` 実装
-- [x] 3-2. `LocalStorageImageStorage` 実装（Base64保存）
-
 ## Phase 4: 地図・ピン表示 [REVIEW]
 
 - [ ] 4-1. Google Maps API のセットアップ（環境変数・ローダー）
@@ -82,3 +77,4 @@
 - Phase 1: プロジェクト基盤 `8057337..3ad56e1`
 - Phase 2: ドメインモデル `41158dc..207a691`
 - Phase 2b: ドメインモデル再設計 `c83e835..5dd34d6`
+- Phase 3: インフラ層（LocalStorage） `a01871c..e37be15`
