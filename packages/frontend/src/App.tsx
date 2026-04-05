@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Castle } from './domain/castle/Castle';
 import { LocalStorageCastleRepository } from './infrastructure/localStorage/LocalStorageCastleRepository';
+import { seedIfEmpty } from './infrastructure/localStorage/seedData';
 import { CastleMap } from './presentation/components/CastleMap';
 import { CastlePin } from './presentation/components/CastlePin';
-import { useEffect } from 'react';
 
 const repository = new LocalStorageCastleRepository();
 
@@ -12,7 +12,7 @@ function App() {
   const [selectedCastle, setSelectedCastle] = useState<Castle | null>(null);
 
   useEffect(() => {
-    repository.findAll().then(setCastles);
+    seedIfEmpty().then(() => repository.findAll()).then(setCastles);
   }, []);
 
   return (
