@@ -43,12 +43,6 @@
 
 
 
-## Phase 6: 管理機能 [REVIEW]
-
-- [x] 6-1. 管理/閲覧モード切り替え
-- [x] 6-2. Nominatim でお城を名前検索して追加する機能
-- [x] 6-3. 写真アップロード機能（Base64 → localStorage）
-
 ---
 
 ## メモ・決定事項
@@ -70,3 +64,4 @@
 - Phase 3: インフラ層（LocalStorage） `a01871c..e37be15`
 - Phase 4: 地図・ピン表示 `c71d76c..8dbdbbb`
 - Phase 5: 写真ギャラリー `e01f071..e01f071`
+- Phase 6: 管理機能 `e2f9b94..f282ca5`
