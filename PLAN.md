@@ -40,11 +40,6 @@
 
 ---
 
-## Phase 8: ドメイン拡張
-
-- [x] 8-1. Castle 型に `nameEn?`（英語名・任意）と `visitedAt?`（"YYYY-MM" 形式・任意）を追加
-- [x] 8-2. Castle 型に `thumbnailPhotoId?`（ピンホバー用サムネイル写真ID・任意）を追加
-
 ## Phase 9: トップページ レイアウト再設計 [REVIEW]
 
 - [ ] 9-1. AppLayout コンポーネント（地図エリア メインレイアウト）
@@ -88,3 +83,4 @@
 - Phase 5: 写真ギャラリー `e01f071..e01f071`
 - Phase 6: 管理機能 `e2f9b94..f282ca5`
 - Phase 7: ギャラリー改善 `026cf91..da1c911`
+- Phase 8: ドメイン拡張 `13ca495..78e4e21`
