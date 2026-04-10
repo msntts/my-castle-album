@@ -15,4 +15,5 @@ export interface Castle {
   visitedAt?: string; // "YYYY-MM" format
   location: Location;
   photos: Photo[];
+  thumbnailPhotoId?: string;
 }
