@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Castle } from './domain/castle/Castle';
 import { LocalStorageCastleRepository } from './infrastructure/localStorage/LocalStorageCastleRepository';
+import { LocalStorageImageStorage } from './infrastructure/localStorage/LocalStorageImageStorage';
 import { seedIfEmpty } from './infrastructure/localStorage/seedData';
 import { AddCastleForm } from './presentation/components/AddCastleForm';
 import { AppLayout } from './presentation/components/AppLayout';
@@ -10,6 +11,7 @@ import { CastlePin } from './presentation/components/CastlePin';
 import { MascotCharacter } from './presentation/components/MascotCharacter';
 
 const repository = new LocalStorageCastleRepository();
+const imageStorage = new LocalStorageImageStorage();
 
 function App() {
   const [castles, setCastles] = useState<Castle[]>([]);
@@ -29,6 +31,7 @@ function App() {
               key={castle.castleId}
               castle={castle}
               onClick={setSelectedCastle}
+              imageStorage={imageStorage}
             />
           ))}
         </CastleMap>

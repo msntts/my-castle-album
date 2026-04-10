@@ -1,0 +1,19 @@
+.card {
+  min-width: 120px;
+  text-align: center;
+}
+
+.thumbnail {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+
+.name {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: bold;
+  color: #2c3e50;
+}
