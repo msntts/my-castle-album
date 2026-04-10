@@ -75,5 +75,5 @@
 - Phase 5: 写真ギャラリー `e01f071..e01f071`
 - Phase 6: 管理機能 `e2f9b94..f282ca5`
 - Phase 7: ギャラリー改善 `026cf91..da1c911`
-- Phase 8: ドメイン拡張 `13ca495..78e4e21`
+- Phase 8: ドメイン拡張（thumbnailPhotoId? のみ。nameEn/visitedAt は不要と判断し削除） `13ca495..78e4e21`
 - Phase 9: トップページ レイアウト再設計 `def8aa7..6de9a3f`
