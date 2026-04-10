@@ -43,12 +43,15 @@
 ## Phase 8: ドメイン拡張
 
 - [ ] 8-1. Castle 型に `nameEn?`（英語名・任意）と `visitedAt?`（"YYYY-MM" 形式・任意）を追加
+- [ ] 8-2. Castle 型に `thumbnailPhotoId?`（ピンホバー用サムネイル写真ID・任意）を追加
 
 ## Phase 9: トップページ レイアウト再設計 [REVIEW]
 
 - [ ] 9-1. AppLayout コンポーネント（地図エリア メインレイアウト）
 - [ ] 9-2. MascotCharacter コンポーネント（地図右下固定）
 - [ ] 9-3. App.tsx を AppLayout に組み込む・既存コンポーネントを配置
+- [ ] 9-4. CastlePinHoverCard コンポーネント（ピンホバー時のサムネイルポップアップ）
+- [ ] 9-5. 管理モード：城のサムネイル写真を設定する機能
 
 ## Phase 10: 城詳細モーダル [REVIEW]
 
