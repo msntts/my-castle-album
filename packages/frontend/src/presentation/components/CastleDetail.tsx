@@ -35,7 +35,11 @@ export function CastleDetail({ castle, isAdminMode, onClose, onCastleUpdated }: 
         photos={castle.photos}
         castleId={castle.castleId}
         isAdminMode={isAdminMode}
+        thumbnailPhotoId={castle.thumbnailPhotoId}
         onPhotosChanged={(photos) => onCastleUpdated({ ...castle, photos })}
+        onThumbnailChanged={(thumbnailPhotoId) =>
+          onCastleUpdated({ ...castle, thumbnailPhotoId })
+        }
       />
     </div>
   );
