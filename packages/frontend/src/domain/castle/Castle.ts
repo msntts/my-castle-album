@@ -11,6 +11,8 @@ export interface Location {
 export interface Castle {
   castleId: CastleId;
   name: string;
+  nameEn?: string;
+  visitedAt?: string; // "YYYY-MM" format
   location: Location;
   photos: Photo[];
 }

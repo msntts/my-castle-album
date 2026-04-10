@@ -1,6 +1,10 @@
 {
   "tools": [
+    "Agent",
+    "AskUserQuestion",
     "Glob",
-    "Read"
+    "Grep",
+    "Read",
+    "ToolSearch"
   ]
 }
