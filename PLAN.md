@@ -42,7 +42,7 @@
 
 ## Phase 9: トップページ レイアウト再設計 [REVIEW]
 
-- [ ] 9-1. AppLayout コンポーネント（地図エリア メインレイアウト）
+- [x] 9-1. AppLayout コンポーネント（地図エリア メインレイアウト）
 - [ ] 9-2. MascotCharacter コンポーネント（地図右下固定）
 - [ ] 9-3. App.tsx を AppLayout に組み込む・既存コンポーネントを配置
 - [ ] 9-4. CastlePinHoverCard コンポーネント（ピンホバー時のサムネイルポップアップ）
