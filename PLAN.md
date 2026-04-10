@@ -40,6 +40,30 @@
 
 ---
 
+## Phase 8: ドメイン拡張
+
+- [ ] 8-1. Castle 型に `nameEn?`（英語名・任意）と `visitedAt?`（"YYYY-MM" 形式・任意）を追加
+
+## Phase 9: トップページ レイアウト再設計 [REVIEW]
+
+- [ ] 9-1. AppLayout コンポーネント（地図エリア メインレイアウト）
+- [ ] 9-2. MascotCharacter コンポーネント（地図右下固定）
+- [ ] 9-3. App.tsx を AppLayout に組み込む・既存コンポーネントを配置
+
+## Phase 10: 城詳細モーダル [REVIEW]
+
+- [ ] 10-1. CastleDetailModal 骨格（オーバーレイ・閉じるボタン）+ ピンクリック配線
+- [ ] 10-2. CastleHeroImage（左側メイン写真・縦いっぱい表示）
+- [ ] 10-3. CastleInfoPanel（城名・ピン詳細ボタン）
+- [ ] 10-4. PhotoStrip（下部サムネイル横スクロールストリップ）
+
+## Phase 11: 右サイドバー（オプション）
+
+- [ ] 11-1. PhotoSidebar コンポーネント（全城の写真サムネイル縦並び）
+- [ ] 11-2. AppLayout に PhotoSidebar を組み込む
+
+---
+
 ## メモ・決定事項
 - 初回はフロントエンドのみ。AWSバックエンドは後フェーズ
 - Repository パターンで localStorage ↔ AWS の差し替えを吸収する
