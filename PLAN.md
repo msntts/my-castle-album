@@ -63,3 +63,42 @@
 - Phase 5: 写真ギャラリー `e01f071..e01f071`
 - Phase 6: 管理機能 `e2f9b94..f282ca5`
 - Phase 7: ギャラリー改善 `026cf91..da1c911`
+
+---
+
+## Phase 8: AWS基盤 (CDK・DynamoDB・S3・CloudFront)
+→ 詳細: `docs/aws-architecture.md`
+
+#### タスク
+- 8-1: `packages/infra` パッケージ作成（CDK TypeScript）
+- 8-2: DynamoDB テーブル定義（シングルテーブル設計）
+- 8-3: S3 バケット（BlockPublicAccess・CORS）
+- 8-4: CloudFront ディストリビューション（OAC・HTTPS強制）
+
+## Phase 9: バックエンドAPI (Lambda・API Gateway)
+→ 詳細: `docs/aws-architecture.md`
+
+#### タスク
+- 9-1: Lambda 関数 2本（castles-handler・photos-handler）
+- 9-2: API Gateway HTTP API + CORS 設定
+- 9-3: Castle CRUD エンドポイント
+- 9-4: 写真 Presigned URL フロー
+
+## Phase 10: 認証 (Cognito)
+→ 詳細: `docs/aws-architecture.md`
+
+#### タスク
+- 10-1: Cognito User Pool（セルフサインアップ無効・SRP認証・TOTP MFA）
+- 10-2: API Gateway JWT Authorizer（書き込み系エンドポイントに適用）
+- 10-3: フロントエンド: `LoginModal` コンポーネント
+- 10-4: フロントエンド: `useAuth` フック
+
+## Phase 11: フロントエンドAWS統合
+→ 詳細: `docs/aws-architecture.md`
+
+#### タスク
+- 11-1: `AwsCastleRepository` 実装
+- 11-2: `AwsImageStorage` 実装（Presigned URL）
+- 11-3: `cognitoAuth.ts` 実装
+- 11-4: `App.tsx` 統合（認証連携・repository切り替え）
+- 11-5: localStorage データ移行スクリプト
