@@ -48,6 +48,32 @@ graph TB
 
 ## Phase 8: AWS基盤 (CDK・DynamoDB・S3・CloudFront)
 
+### 8-0: CDK デプロイ前提条件
+
+Phase 8 着手前に以下を準備する。
+
+**1. AWS アカウント・CLI 設定**
+```bash
+aws configure  # または aws sso login
+aws sts get-caller-identity  # 疎通確認
+```
+
+**2. CDK Bootstrap（初回のみ）**
+```bash
+npx cdk bootstrap aws://{ACCOUNT_ID}/ap-northeast-1
+```
+
+**3. デプロイ方針（どちらか選択）**
+
+| 方式 | 用途 | Credential 管理 |
+|------|------|----------------|
+| ローカル手動デプロイ | 個人開発（当面はこちら） | `~/.aws/credentials`（IAM User または SSO） |
+| CI/CD（GitHub Actions） | 将来自動化する場合 | OIDC による一時クレデンシャル（アクセスキー不要） |
+
+当面はローカル手動デプロイで進める。CI/CD 化する際は GitHub Actions の `aws-actions/configure-aws-credentials` + OIDC を採用する（長期アクセスキーをシークレットに保存しない）。
+
+---
+
 ### 8-1: packages/infra パッケージ構成
 
 ```
@@ -92,7 +118,7 @@ packages/infra/
 | 全城一覧取得 | GSI1: `GSI1PK = ALL_CASTLES` |
 | 城1件取得（写真込み） | Query: `PK = CASTLE#{id}` |
 | 城保存（新規/更新） | PutItem: `PK=CASTLE#{id}, SK=METADATA` |
-| 城削除（写真も一括） | TransactWrite: METADATA + 全PHOTO行を削除 |
+| 城削除（写真も一括） | Query で写真一覧取得 → BatchWriteItem で25件ずつ分割削除（TransactWrite は25オペ上限のため不使用）。補償処理: 分割途中でエラーが出た場合は再実行で冪等になるよう DeleteItem を繰り返す。孤立 PHOTO レコードは Castle METADATA が存在しないものとして定期クリーンアップで対処可 |
 | 写真追加 | PutItem: `PK=CASTLE#{id}, SK=PHOTO#{photoId}` |
 | 写真削除 | DeleteItem: `PK=CASTLE#{id}, SK=PHOTO#{photoId}` |
 
@@ -179,7 +205,7 @@ photos/{castleId}/{photoId}.jpg
 | `selfSignUpEnabled` | false | 招待制・サイト所有者1名のみ |
 | 認証フロー | SRP (`userSrpAuth`) | 平文パスワードを送信しない |
 | `userPasswordAuth` | false | 平文認証を明示的に無効化 |
-| MFA | TOTP Optional | 管理者は有効化を推奨 |
+| MFA | TOTP Required | 管理者1名のみのため全員強制。**移行手順: ① 管理者アカウント作成 → ② TOTP アプリで設定完了 → ③ CDK で Required に変更してデプロイ。手順②③を逆にするとサインインが即ブロックされる。ロールバック: ブロックされた場合は AWS Console から Cognito User Pool の MFA 設定を Optional に一時戻し、TOTP 設定後に再度 Required にする** |
 | パスワード | 12文字以上・大小英数記号必須 | |
 | `generateSecret` | false | SPAはクライアントシークレット不要 |
 | accessToken 有効期限 | 1時間 | |
@@ -189,11 +215,34 @@ photos/{castleId}/{photoId}.jpg
 
 1. ユーザーがメール・パスワードを入力
 2. `amazon-cognito-identity-js` が Cognito へ SRP 認証
-3. idToken・accessToken（**メモリ保持**）+ refreshToken（**localStorage**）を取得
-4. 管理系APIリクエスト時に `Authorization: Bearer {idToken}` を付与
+3. idToken・accessToken（**メモリ保持**）+ refreshToken（**sessionStorage**）を取得
+4. 管理系APIリクエスト時に `Authorization: Bearer {accessToken}` を付与
 5. API Gateway JWT Authorizer が Cognito JWKS で自動検証（Lambda内では検証不要）
 
-refreshToken の localStorage 保管は XSS リスクを許容した上での選択（個人サイト・SPA）。
+- **accessToken を Bearer に使う**（idToken は身元証明用。API Gateway に渡すと email 等の PII がログに記録される）
+- **refreshToken は sessionStorage 保持**（localStorage はタブ跨ぎで永続するためセッション奪取リスクが高い。sessionStorage はタブ閉鎖で自動クリア）
+
+**JWT Authorizer CDK 設定（`api-stack.ts`）:**
+```typescript
+const authorizer = new apigwv2authorizers.HttpJwtAuthorizer(
+  'CognitoAuthorizer',
+  `https://cognito-idp.${cdk.Aws.REGION}.amazonaws.com/${userPool.userPoolId}`,
+  {
+    jwtAudience: [userPoolClient.userPoolClientId],
+    // accessToken を使うため tokenUse を明示（省略すると id/access 両方許可になる）
+    identitySource: ['$request.header.Authorization'],
+  }
+);
+// Cognito 側では accessToken の aud クレームが client_id と一致するかを自動検証する
+```
+
+> **必須実装**: API Gateway HTTP API の JWT Authorizer は `token_use` クレームを強制できない。Lambda ハンドラーの先頭で以下を **必須チェック** とし、不一致時は即 401 を返すこと（Phase 9 タスク 9-5）。
+> ```typescript
+> const claims = event.requestContext.authorizer?.jwt?.claims;
+> if (claims?.token_use !== 'access') {
+>   return { statusCode: 401, body: 'Unauthorized' };
+> }
+> ```
 
 ### 管理モード変更点
 
@@ -225,16 +274,24 @@ refreshToken の localStorage 保管は XSS リスクを許容した上での選
 ### 環境変数切り替え
 
 ```
-# packages/frontend/.env.local（開発）
+# packages/frontend/.env.local（開発・gitignore対象）
 VITE_USE_AWS=false
 
-# packages/frontend/.env.production
+# packages/frontend/.env.production（gitignore対象・値はCI環境変数から注入）
 VITE_USE_AWS=true
 VITE_API_BASE_URL=https://xxxx.execute-api.ap-northeast-1.amazonaws.com
 VITE_COGNITO_USER_POOL_ID=ap-northeast-1_XXXXXXXXX
 VITE_COGNITO_CLIENT_ID=XXXXXXXXXXXXXXXXXXXXXXXXXX
 VITE_CLOUDFRONT_DOMAIN=https://dXXXXXXXXXXXX.cloudfront.net
 ```
+
+**.gitignore に追記すること（Phase 11 開始前に必ず対応）:**
+```
+packages/frontend/.env.local
+packages/frontend/.env.production
+```
+
+値のプレースホルダーを保持するため `.env.production.example` をリポジトリに含め、実際の値は CI/CD の環境変数（GitHub Actions Secrets 等）から `${{ secrets.XXX }}` で注入する。
 
 `App.tsx` での切り替え:
 ```typescript
@@ -282,8 +339,8 @@ const repository = import.meta.env.VITE_USE_AWS === 'true'
 | **CORS** | `allowOrigins` は本番ドメインのみ（ワイルドカード禁止） |
 | **IAM最小権限** | Lambda各関数に必要なアクション・リソースのみ付与 |
 | **HTTPS強制** | CloudFront `REDIRECT_TO_HTTPS` |
-| **Cognito設定** | セルフサインアップ無効・SRP認証・TOTP MFA Optional・強力なパスワードポリシー |
+| **Cognito設定** | セルフサインアップ無効・SRP認証・TOTP MFA Required・強力なパスワードポリシー |
 | **Presigned URL有効期限** | 5分（300秒） |
-| **画像タイプ検証** | Lambda で `ContentType: image/*` のみ許可 |
+| **画像タイプ検証** | Lambda で `ContentType: image/*` のみ許可（クライアント申告値の検証）。マジックバイト検証は個人サイトの脅威モデルでは許容範囲として未実装 |
 | **オブジェクトキー** | ULID使用（連番・予測可能なキーを避ける） |
 | **DynamoDBインジェクション** | AWS SDK のパラメータバインディングを使用（文字列結合なし） |

@@ -83,6 +83,9 @@
 - 9-2: API Gateway HTTP API + CORS 設定
 - 9-3: Castle CRUD エンドポイント
 - 9-4: 写真 Presigned URL フロー
+- 9-5: Lambda 内 `token_use: 'access'` クレーム検証（未検証時は 401 を返す。必須）
+- 9-6: 孤立 PHOTO レコードのクリーンアップ Lambda（EventBridge Scheduler で定期実行）
+- 9-7: CloudWatch Alarm（Lambda エラーレート・API Gateway 5xx → SNS → メール通知）
 
 ## Phase 10: 認証 (Cognito)
 → 詳細: `docs/aws-architecture.md`
