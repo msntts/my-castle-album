@@ -78,6 +78,18 @@ terraform {
     encrypt        = true
   }
 }
+
+# ロックテーブル（PAY_PER_REQUEST 必須。デフォルト PROVISIONED にすると月 $0.56〜0.65 の固定費が発生する）
+resource "aws_dynamodb_table" "tfstate_lock" {
+  name         = "my-castle-album-tfstate-lock"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+  attribute { name = "LockID"; type = "S" }
+
+  server_side_encryption { enabled = true }  # 他テーブルとの一貫性のため明示
+
+  lifecycle { prevent_destroy = true }
+}
 ```
 
 **4. 初期化・デプロイ**
@@ -197,8 +209,31 @@ resource "aws_dynamodb_table" "main" {
     name            = "GSI1"
     hash_key        = "GSI1PK"
     range_key       = "GSI1SK"
-    projection_type = "ALL"
+    projection_type = "INCLUDE"
+    # ALL は PHOTO レコードの全属性も GSI に複製されて過剰。一覧表示に必要な属性のみ射影する
+    # 現ドメインモデルの Castle 一覧表示に必要な属性: name・latitude・longitude のみ
+    # photos は PHOTO#{photoId} 行に分離されているため一覧取得時は不要
+    # 新属性を Castle METADATA に追加した場合はここへの追記が必要（追記後は destroy→recreate が必要）
+    non_key_attributes = ["name", "latitude", "longitude"]
   }
+
+  # ⚠️ GSI projection 変更時の注意: DynamoDB の GSI projection は in-place 変更不可。
+  # Terraform は destroy→recreate しようとするが prevent_destroy = true と競合して apply が失敗する。
+  # 既存テーブルがある場合は以下の手順で対応（データ損失防止のためアプリを必ず停止すること）:
+  #   1. アプリをメンテナンスモードにして書き込みを停止する
+  #      （具体的手段: API Gateway ステージを無効化 または Cognito アプリクライアントを無効化）
+  #   2. DynamoDB コンソールからテーブルを S3 へ JSON エクスポート
+  #      （エクスポート先 S3 バケットは BlockPublicAccess=ALL・SSE-S3 以上で暗号化されていることを確認）
+  #   3. エクスポート完了後、レコード件数をメモしておく
+  #   4. terraform state rm aws_dynamodb_table.main
+  #   5. prevent_destroy を一時的に false にして terraform apply（テーブル削除→再作成）
+  #      （この変更は PR レビュー必須・適用は MFA 有効な管理者アカウントのみで実施すること）
+  #   6. S3 からデータをインポート（ImportTable API または AWS CLI）
+  #   7. レコード件数・サンプルデータを手順3と照合して整合性を確認
+  #   8. prevent_destroy を true に戻して terraform apply
+  #   9. アプリのメンテナンスモードを解除
+  # ロールバック: 手順5実行前であれば terraform state に戻すだけで復元可能。
+  # 手順6以降に失敗した場合は手順2のエクスポートから再インポートする。
 
   lifecycle { prevent_destroy = true }
 }
@@ -248,6 +283,50 @@ resource "aws_s3_bucket_cors_configuration" "photos" {
   }
 }
 ```
+
+### 8-3b: SPA 静的ホスティング用 S3
+
+アーキテクチャ図の `CF_STATIC` に対応。写真バケットとは別バケットで管理する。
+
+```hcl
+resource "aws_s3_bucket" "spa" {
+  bucket = "my-castle-album-spa-${data.aws_caller_identity.current.account_id}"
+  lifecycle { prevent_destroy = true }
+}
+
+resource "aws_s3_bucket_public_access_block" "spa" {
+  bucket                  = aws_s3_bucket.spa.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "spa" {
+  bucket = aws_s3_bucket.spa.id
+  rule {
+    apply_server_side_encryption_by_default { sse_algorithm = "AES256" }
+  }
+}
+
+resource "aws_s3_bucket_versioning" "spa" {
+  bucket = aws_s3_bucket.spa.id
+  versioning_configuration { status = "Enabled" }
+  # デプロイ失敗時（壊れた JS/CSS が配信された場合）に旧バージョンへ即時ロールバックできる
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "spa" {
+  bucket = aws_s3_bucket.spa.id
+  rule {
+    id     = "expire-old-versions"
+    status = "Enabled"
+    noncurrent_version_expiration { noncurrent_days = 30 }
+    # 古いデプロイバージョンを 30 日で自動削除してストレージ増加を防ぐ
+  }
+}
+```
+
+CloudFront ディストリビューションは 8-4 で写真バケットと同じく OAC で接続する（ディストリビューション 1 つに複数オリジンを設定してコスト節約）。
 
 ### 8-4: CloudFront ディストリビューション
 
@@ -332,7 +411,9 @@ resource "aws_s3_bucket_policy" "photos" {
 ### Lambda 構成
 - `castles-handler`: Castle CRUD
 - `photos-handler`: Photo管理 + Presigned URL発行
-- Runtime: Node.js 22.x / ARM64 (Graviton2・20%コスト削減) / 256MB / タイムアウト10秒
+- Runtime: Node.js 22.x / ARM64 (Graviton2・20%コスト削減) / **128MB** / タイムアウト10秒
+  - 256MB は過剰スペック。DynamoDB CRUD + Presigned URL 発行は 128MB で動作。無料枠終了後にコストが 2 倍になるため最小から始める
+  - ⚠️ 本番投入前に SAM CLI または Lambda コンソールの `--memory-size 128` でスモークテストを実施し OOM が出ないことを確認する。OOM は CloudWatch Logs の `Runtime.OutOfMemory` エラー、または Lambda Insights の `memory_utilization` で検知可能。実測で不足する場合は 256MB に戻す
 
 ### 画像アップロードフロー（Presigned URL）
 
@@ -363,6 +444,27 @@ resource "aws_s3_bucket_policy" "photos" {
 | CloudFront OAC | `s3:GetObject` | バケット全体（読み取りのみ） |
 
 各 Lambda に追加付与するのは `AWSLambdaBasicExecutionRole`（CloudWatch Logs）のみ。VPCアクセスは不要。
+
+**CloudWatch Logs 保持期間（Terraform・`modules/api/main.tf`）:**
+```hcl
+resource "aws_cloudwatch_log_group" "castles" {
+  name              = "/aws/lambda/${aws_lambda_function.castles.function_name}"
+  retention_in_days = 30  # デフォルト無期限は NG。CIS Benchmark 推奨 30 日（最低ライン）
+  # TODO(Phase 10): Cognito 認証導入後は JWT・ユーザー識別子がログに混入するため
+  #   kms_key_id を設定して KMS 暗号化 + 保持期間 90 日への延長を検討する
+}
+
+resource "aws_cloudwatch_log_group" "photos" {
+  name              = "/aws/lambda/${aws_lambda_function.photos.function_name}"
+  retention_in_days = 30
+}
+```
+
+> **既存環境への適用時の注意**: Lambda が先に実行されてロググループが自動生成済みの場合、terraform apply が `ResourceAlreadyExistsException` で失敗する。その場合は事前に import する:
+> ```bash
+> terraform import aws_cloudwatch_log_group.castles /aws/lambda/castles-handler
+> terraform import aws_cloudwatch_log_group.photos  /aws/lambda/photos-handler
+> ```
 
 ---
 
@@ -534,8 +636,8 @@ const repository = import.meta.env.VITE_USE_AWS === 'true'
 | 選択 | 代替案 | 理由 |
 |------|--------|------|
 | API Gateway **HTTP API** | REST API | $1/百万 vs $3.5/百万（71%安） |
-| Lambda **ARM64** | x86_64 | 同性能で20%安価 |
-| DynamoDB **PAY_PER_REQUEST** | PROVISIONED | 低トラフィックは最低料金なしのオンデマンドが安価 |
+| Lambda **ARM64 128MB** | x86_64 256MB | ARM64で20%安価 + メモリ半減で追加50%削減 |
+| DynamoDB **PAY_PER_REQUEST**（tfstate ロックテーブル含む） | PROVISIONED | デフォルト PROVISIONED は月$0.56〜0.65 の固定費が発生するため必ず明示 |
 | **Cognito** | Auth0 / Firebase Auth | 50,000 MAUまで無料 |
 | **amazon-cognito-identity-js** | AWS Amplify | Amplify は 200KB+ と重い・このユースケースでは過剰 |
 
