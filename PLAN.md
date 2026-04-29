@@ -105,3 +105,13 @@
 - 11-3: `cognitoAuth.ts` 実装
 - 11-4: `App.tsx` 統合（認証連携・repository切り替え）
 - 11-5: localStorage データ移行スクリプト
+
+## Phase 12: CI/CD (GitHub Actions)
+→ 詳細: `docs/aws-architecture.md`
+
+#### タスク
+- 12-1: IAM OIDC Provider + GitHub Actions ロール（Terraform、`modules/cicd/`）
+- 12-2: Terraform State バックエンドを S3 へ移行（tfstate バケット + ロックテーブルを Terraform 管理下へ）
+- 12-3: CI ワークフロー（`.github/workflows/ci.yml`）: lint・typecheck・build（AWS不要）
+- 12-4: CD インフラワークフロー（`.github/workflows/cd-infra.yml`）: terraform plan/apply
+- 12-5: CD フロントエンドワークフロー（`.github/workflows/cd-frontend.yml`）: build → S3 sync → CloudFront invalidation

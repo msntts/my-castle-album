@@ -141,7 +141,7 @@ packages/infra/
 **`main.tf` の provider 設定:**
 ```hcl
 terraform {
-  required_version = ">= 1.0"
+  required_version = "~> 1.9"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -643,6 +643,381 @@ const repository = import.meta.env.VITE_USE_AWS === 'true'
 
 ---
 
+## Phase 12: CI/CD (GitHub Actions)
+
+### 概要
+
+| ワークフロー | トリガー | AWS必要 | 目的 |
+|------------|---------|---------|------|
+| `ci.yml` | PR・全ブランチ push | 不要 | lint・typecheck・build |
+| `cd-infra.yml` | main push | 必要 | terraform plan/apply |
+| `cd-frontend.yml` | main push | 必要 | SPA ビルド → S3 sync → CF invalidation |
+
+認証方式: **OIDC（長期アクセスキー不使用）**
+
+**ブランチ戦略:**
+
+```
+develop ──→ PR ──→ main ──→ CD（apply / deploy）
+  ↑                   ↑
+  開発作業           CI が全ブランチで通過後にマージ
+```
+
+- 開発は `develop` ブランチで進める
+- `main` は常にデプロイ済み状態を保つ
+- OIDC ロールの `sub` 条件は `ref:refs/heads/main` のみ許可（develop からの直接 apply を防ぐ）
+
+---
+
+### 12-1: IAM OIDC Provider + GitHub Actions ロール
+
+`packages/infra/modules/cicd/main.tf` に追加する。
+
+```hcl
+# GitHub OIDC Provider（AWSアカウントに1つだけ作成）
+resource "aws_iam_openid_connect_provider" "github" {
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
+  # thumbprint は形式的な値（AWS は Amazon CA で実際に検証）
+  thumbprint_list = [
+    "6938fd4d98bab03faadb97b34396831e3780aea1",
+    "1c58a3a8518e8759bf075b76b750d4f2df264fcd",
+  ]
+}
+
+locals {
+  oidc_arn = aws_iam_openid_connect_provider.github.arn
+  # main ブランチに限定（PR時のapply誤爆防止）
+  github_sub_main = "repo:msntts/my-castle-album:ref:refs/heads/main"
+}
+
+# --- ロール1: Terraform apply 用 ---
+resource "aws_iam_role" "github_terraform" {
+  name = "github-actions-terraform"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = local.oidc_arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = local.github_sub_main
+        }
+      }
+    }]
+  })
+}
+
+# Terraform が管理するサービスのみに限定したインラインポリシー
+resource "aws_iam_role_policy" "github_terraform" {
+  name = "terraform-managed-services"
+  role = aws_iam_role.github_terraform.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # アプリケーション層のサービス（リソース単位での絞り込みは Terraform 管理範囲が
+        # 動的に変わるため * とし、サービス種別で最小化する）
+        Effect = "Allow"
+        Action = [
+          "dynamodb:*",
+          "s3:*",
+          "lambda:*",
+          "apigateway:*",
+          "cognito-idp:*",
+          "cloudfront:*",
+          "logs:*",
+          "scheduler:*",
+          "sns:*",
+          "events:*",
+        ]
+        Resource = "*"
+      },
+      {
+        # IAM: Lambda 実行ロール・OIDC ロール等の作成に必要な操作のみ列挙
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole", "iam:DeleteRole", "iam:GetRole",
+          "iam:TagRole", "iam:UntagRole", "iam:ListRoleTags",
+          "iam:UpdateAssumeRolePolicy",
+          "iam:AttachRolePolicy", "iam:DetachRolePolicy",
+          "iam:PutRolePolicy", "iam:DeleteRolePolicy",
+          "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies",
+          "iam:PassRole",
+          "iam:CreatePolicy", "iam:DeletePolicy",
+          "iam:GetPolicy", "iam:GetPolicyVersion",
+          "iam:CreatePolicyVersion", "iam:DeletePolicyVersion", "iam:ListPolicyVersions",
+          "iam:ListEntitiesForPolicy",
+          "iam:CreateOpenIDConnectProvider", "iam:DeleteOpenIDConnectProvider",
+          "iam:GetOpenIDConnectProvider", "iam:TagOpenIDConnectProvider",
+          "iam:UntagOpenIDConnectProvider", "iam:UpdateOpenIDConnectProviderThumbprint",
+          "iam:AddClientIDToOpenIDConnectProvider", "iam:RemoveClientIDFromOpenIDConnectProvider",
+        ]
+        Resource = "*"
+      },
+      {
+        # Terraform state 操作・アカウント情報取得
+        Effect   = "Allow"
+        Action   = ["sts:GetCallerIdentity"]
+        Resource = "*"
+      },
+    ]
+  })
+}
+
+# --- ロール2: SPA デプロイ用（最小権限） ---
+resource "aws_iam_role" "github_deploy" {
+  name = "github-actions-deploy"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = local.oidc_arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = local.github_sub_main
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "github_deploy" {
+  name = "spa-deploy"
+  role = aws_iam_role.github_deploy.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # SPA バケットへのファイル同期
+        Effect = "Allow"
+        Action = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
+        Resource = [
+          var.spa_bucket_arn,
+          "${var.spa_bucket_arn}/*",
+        ]
+      },
+      {
+        # CloudFront キャッシュ無効化
+        Effect   = "Allow"
+        Action   = "cloudfront:CreateInvalidation"
+        Resource = var.cloudfront_distribution_arn
+      },
+    ]
+  })
+}
+
+output "terraform_role_arn" { value = aws_iam_role.github_terraform.arn }
+output "deploy_role_arn"    { value = aws_iam_role.github_deploy.arn }
+```
+
+**`modules/cicd/variables.tf`:**
+```hcl
+variable "spa_bucket_arn"             { type = string }
+variable "cloudfront_distribution_arn" { type = string }
+```
+
+---
+
+### 12-2: Terraform State バックエンド S3 移行
+
+Phase 8-0 で示した S3 バックエンドを Phase 12 のタイミングで構築・移行する。
+
+**移行手順:**
+```bash
+# 1. tfstate バケット・ロックテーブルを手動作成（または Terraform で別途管理）
+aws s3api create-bucket \
+  --bucket my-castle-album-tfstate \
+  --region ap-northeast-1 \
+  --create-bucket-configuration LocationConstraint=ap-northeast-1
+
+aws s3api put-bucket-versioning \
+  --bucket my-castle-album-tfstate \
+  --versioning-configuration Status=Enabled
+
+aws dynamodb create-table \
+  --table-name my-castle-album-tfstate-lock \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --region ap-northeast-1
+
+# 2. backend.tf に S3 バックエンド設定を追加（Phase 8-0 参照）
+# 3. terraform init -migrate-state（ローカル state → S3 へ自動移行）
+```
+
+---
+
+### 12-3: CI ワークフロー（`.github/workflows/ci.yml`）
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  lint-typecheck-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm -F frontend lint
+
+      - run: pnpm -F frontend typecheck
+
+      - run: pnpm -F frontend build
+```
+
+---
+
+### 12-4: CD インフラワークフロー（`.github/workflows/cd-infra.yml`）
+
+```yaml
+name: CD Infra
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/infra/**"
+
+permissions:
+  id-token: write   # OIDC に必須
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/infra
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"  # Terraform 1.9.x LTS（実装時に最新パッチを確認）
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - run: terraform init
+      - run: terraform plan -out=tfplan
+      - run: terraform apply tfplan
+```
+
+**GitHub Secrets に登録するもの:**
+
+| シークレット名 | 値 |
+|--------------|-----|
+| `AWS_TERRAFORM_ROLE_ARN` | `arn:aws:iam::{accountId}:role/github-actions-terraform` |
+| `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::{accountId}:role/github-actions-deploy` |
+
+---
+
+### 12-5: CD フロントエンドワークフロー（`.github/workflows/cd-frontend.yml`）
+
+```yaml
+name: CD Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/frontend/**"
+      - "packages/shared/**"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm -F frontend build
+        env:
+          VITE_USE_AWS: "true"
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_CLIENT_ID: ${{ secrets.VITE_COGNITO_CLIENT_ID }}
+          VITE_CLOUDFRONT_DOMAIN: ${{ secrets.VITE_CLOUDFRONT_DOMAIN }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync packages/frontend/dist s3://${{ secrets.SPA_BUCKET_NAME }} \
+            --delete \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "index.html"
+          # index.html はキャッシュさせない（デプロイ即時反映のため）
+          aws s3 cp packages/frontend/dist/index.html s3://${{ secrets.SPA_BUCKET_NAME }}/index.html \
+            --cache-control "no-cache,no-store,must-revalidate"
+
+      - name: CloudFront Invalidation
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+```
+
+**追加 Secrets（フロントエンド用）:**
+
+| シークレット名 | 値 |
+|--------------|-----|
+| `VITE_API_BASE_URL` | API Gateway エンドポイント URL |
+| `VITE_COGNITO_USER_POOL_ID` | Cognito User Pool ID |
+| `VITE_COGNITO_CLIENT_ID` | Cognito App Client ID |
+| `VITE_CLOUDFRONT_DOMAIN` | CloudFront ドメイン（`https://dXXX.cloudfront.net`） |
+| `SPA_BUCKET_NAME` | SPA S3 バケット名 |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront ディストリビューション ID |
+
+---
+
 ## セキュリティ設計
 
 | 項目 | 対策 |
@@ -657,3 +1032,4 @@ const repository = import.meta.env.VITE_USE_AWS === 'true'
 | **画像タイプ検証** | Lambda で `ContentType: image/*` のみ許可（クライアント申告値の検証）。マジックバイト検証は個人サイトの脅威モデルでは許容範囲として未実装 |
 | **オブジェクトキー** | ULID使用（連番・予測可能なキーを避ける） |
 | **DynamoDBインジェクション** | AWS SDK のパラメータバインディングを使用（文字列結合なし） |
+| **CI/CD認証** | GitHub Actions OIDC（長期アクセスキー不使用）・main ブランチのみ apply/deploy ロールを assume 可能・Terraform ロールはサービス限定ポリシー（AdministratorAccess 不使用） |
