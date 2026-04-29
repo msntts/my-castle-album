@@ -1,0 +1,23 @@
+{
+  "name": "lambda",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm build:castles && pnpm build:photos",
+    "build:castles": "esbuild castles/handler.ts --bundle --platform=node --target=node22 --outfile=dist/castles/index.js",
+    "build:photos": "esbuild photos/handler.ts --bundle --platform=node --target=node22 --outfile=dist/photos/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "ulid": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "~5.9.0"
+  }
+}

@@ -69,7 +69,7 @@
 ## Phase 9: バックエンドAPI (Lambda・API Gateway) [REVIEW]
 → 詳細: `docs/aws-architecture.md`
 
-- [ ] 9-1: Lambda ソースコード（castles-handler・photos-handler TypeScript）→ [詳細](.claude/briefs/step-9-1-lambda.md)
+- [x] 9-1: Lambda ソースコード（castles-handler・photos-handler TypeScript）→ [詳細](.claude/briefs/step-9-1-lambda.md)
 - [ ] 9-2: Lambda Terraform リソース + API Gateway HTTP API + CORS
 - [ ] 9-3: Castle CRUD エンドポイント実装（Lambda コード）
 - [ ] 9-4: 写真 Presigned URL フロー実装（Lambda コード）
