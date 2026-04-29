@@ -61,16 +61,10 @@
 - Phase 5: 写真ギャラリー `e01f071..e01f071`
 - Phase 6: 管理機能 `e2f9b94..f282ca5`
 - Phase 7: ギャラリー改善 `026cf91..da1c911`
+- Phase 8: AWS基盤 (Terraform・DynamoDB・S3・CloudFront) `ca90fa8..9a297a9`
 
 ---
 
-## Phase 8: AWS基盤 (Terraform・DynamoDB・S3・CloudFront) [REVIEW]
-→ 詳細: `docs/aws-architecture.md`
-
-- [x] 8-1: `packages/infra` パッケージ作成（Terraform ルート構成） → [詳細](.claude/briefs/step-8-1-infra-package.md)
-- [x] 8-2: DynamoDB テーブル定義（シングルテーブル設計）
-- [x] 8-3: S3 バケット（写真用・SPA用・BlockPublicAccess・CORS）
-- [x] 8-4: CloudFront ディストリビューション（OAC・HTTPS強制）
 
 ## Phase 9: バックエンドAPI (Lambda・API Gateway) [REVIEW]
 → 詳細: `docs/aws-architecture.md`
