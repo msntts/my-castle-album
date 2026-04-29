@@ -151,3 +151,143 @@ resource "aws_s3_bucket_lifecycle_configuration" "spa" {
     }
   }
 }
+
+# ─────────────────────────────────────────────────────────
+# CloudFront: SPA + 写真を 1 ディストリビューションで配信
+# ─────────────────────────────────────────────────────────
+
+resource "aws_cloudfront_origin_access_control" "spa" {
+  name                              = "my-castle-album-spa-oac"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+resource "aws_cloudfront_origin_access_control" "photos" {
+  name                              = "my-castle-album-photos-oac"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+resource "aws_cloudfront_distribution" "main" {
+  enabled             = true
+  default_root_object = "index.html"
+  price_class         = "PriceClass_200"
+  comment             = "my-castle-album"
+
+  origin {
+    domain_name              = aws_s3_bucket.spa.bucket_regional_domain_name
+    origin_id                = "spa-s3"
+    origin_access_control_id = aws_cloudfront_origin_access_control.spa.id
+  }
+
+  origin {
+    domain_name              = aws_s3_bucket.photos.bucket_regional_domain_name
+    origin_id                = "photos-s3"
+    origin_access_control_id = aws_cloudfront_origin_access_control.photos.id
+  }
+
+  # デフォルト: SPA（S3 の Cache-Control ヘッダーを尊重）
+  default_cache_behavior {
+    target_origin_id       = "spa-s3"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 31536000
+  }
+
+  # /photos/* → 写真バケット
+  ordered_cache_behavior {
+    path_pattern           = "/photos/*"
+    target_origin_id       = "photos-s3"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+    min_ttl     = 0
+    default_ttl = 86400
+    max_ttl     = 31536000
+  }
+
+  # SPA ルーティング: 存在しないパスは index.html で処理
+  # S3 は OAC 使用時に存在しないオブジェクトを 403 で返すことがあるため両方対応
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 0
+  }
+
+  custom_error_response {
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 0
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+
+  tags = {
+    Project = "my-castle-album"
+  }
+}
+
+# バケットポリシー: CloudFront OAC のみ GET 許可（SPA）
+resource "aws_s3_bucket_policy" "spa" {
+  bucket = aws_s3_bucket.spa.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "cloudfront.amazonaws.com" }
+      Action    = "s3:GetObject"
+      Resource  = "${aws_s3_bucket.spa.arn}/*"
+      Condition = {
+        StringEquals = {
+          "AWS:SourceArn" = aws_cloudfront_distribution.main.arn
+        }
+      }
+    }]
+  })
+}
+
+# バケットポリシー: CloudFront OAC のみ GET 許可（写真）
+resource "aws_s3_bucket_policy" "photos" {
+  bucket = aws_s3_bucket.photos.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "cloudfront.amazonaws.com" }
+      Action    = "s3:GetObject"
+      Resource  = "${aws_s3_bucket.photos.arn}/*"
+      Condition = {
+        StringEquals = {
+          "AWS:SourceArn" = aws_cloudfront_distribution.main.arn
+        }
+      }
+    }]
+  })
+}
