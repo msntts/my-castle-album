@@ -69,7 +69,7 @@
 
 - [x] 8-1: `packages/infra` パッケージ作成（Terraform ルート構成） → [詳細](.claude/briefs/step-8-1-infra-package.md)
 - [x] 8-2: DynamoDB テーブル定義（シングルテーブル設計）
-- [ ] 8-3: S3 バケット（写真用・SPA用・BlockPublicAccess・CORS）
+- [x] 8-3: S3 バケット（写真用・SPA用・BlockPublicAccess・CORS）
 - [ ] 8-4: CloudFront ディストリビューション（OAC・HTTPS強制）
 
 ## Phase 9: バックエンドAPI (Lambda・API Gateway) [REVIEW]
