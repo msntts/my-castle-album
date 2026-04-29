@@ -1,3 +1,11 @@
+output "table_name" {
+  value = aws_dynamodb_table.main.name
+}
+
+output "table_arn" {
+  value = aws_dynamodb_table.main.arn
+}
+
 output "cloudfront_domain" {
   value = aws_cloudfront_distribution.main.domain_name
 }

@@ -31,3 +31,8 @@ output "photos_bucket_arn" {
   description = "写真 S3 バケット ARN（CI/CD ロールポリシーに使用）"
   value       = module.storage.photos_bucket_arn
 }
+
+output "api_endpoint" {
+  description = "API Gateway エンドポイント URL（フロントエンド環境変数 VITE_API_BASE_URL に使用）"
+  value       = module.api.api_endpoint
+}

@@ -20,3 +20,12 @@ module "storage" {
   frontend_origin = var.frontend_origin
   account_id      = data.aws_caller_identity.current.account_id
 }
+
+module "api" {
+  source             = "./modules/api"
+  table_name         = module.storage.table_name
+  table_arn          = module.storage.table_arn
+  photos_bucket_name = module.storage.photos_bucket_name
+  photos_bucket_arn  = module.storage.photos_bucket_arn
+  frontend_origin    = var.frontend_origin
+}
