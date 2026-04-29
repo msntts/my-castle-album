@@ -40,8 +40,6 @@
 
 ---
 
----
-
 ## メモ・決定事項
 - 初回はフロントエンドのみ。AWSバックエンドは後フェーズ
 - Repository パターンで localStorage ↔ AWS の差し替えを吸収する
@@ -66,52 +64,47 @@
 
 ---
 
-## Phase 8: AWS基盤 (Terraform・DynamoDB・S3・CloudFront)
+## Phase 8: AWS基盤 (Terraform・DynamoDB・S3・CloudFront) [REVIEW]
 → 詳細: `docs/aws-architecture.md`
 
-#### タスク
-- 8-1: `packages/infra` パッケージ作成（Terraform）
-- 8-2: DynamoDB テーブル定義（シングルテーブル設計）
-- 8-3: S3 バケット（BlockPublicAccess・CORS）
-- 8-4: CloudFront ディストリビューション（OAC・HTTPS強制）
+- [x] 8-1: `packages/infra` パッケージ作成（Terraform ルート構成） → [詳細](.claude/briefs/step-8-1-infra-package.md)
+- [ ] 8-2: DynamoDB テーブル定義（シングルテーブル設計）
+- [ ] 8-3: S3 バケット（写真用・SPA用・BlockPublicAccess・CORS）
+- [ ] 8-4: CloudFront ディストリビューション（OAC・HTTPS強制）
 
-## Phase 9: バックエンドAPI (Lambda・API Gateway)
+## Phase 9: バックエンドAPI (Lambda・API Gateway) [REVIEW]
 → 詳細: `docs/aws-architecture.md`
 
-#### タスク
-- 9-1: Lambda 関数 2本（castles-handler・photos-handler）
-- 9-2: API Gateway HTTP API + CORS 設定
-- 9-3: Castle CRUD エンドポイント
-- 9-4: 写真 Presigned URL フロー
-- 9-5: Lambda 内 `token_use: 'access'` クレーム検証（未検証時は 401 を返す。必須）
-- 9-6: 孤立 PHOTO レコードのクリーンアップ Lambda（EventBridge Scheduler で定期実行）
-- 9-7: CloudWatch Alarm（Lambda エラーレート・API Gateway 5xx → SNS → メール通知）
+- [ ] 9-1: Lambda ソースコード（castles-handler・photos-handler TypeScript）→ [詳細](.claude/briefs/step-9-1-lambda.md)
+- [ ] 9-2: Lambda Terraform リソース + API Gateway HTTP API + CORS
+- [ ] 9-3: Castle CRUD エンドポイント実装（Lambda コード）
+- [ ] 9-4: 写真 Presigned URL フロー実装（Lambda コード）
+- [ ] 9-5: Lambda 内 `token_use: 'access'` クレーム検証
+- [ ] 9-6: 孤立 PHOTO クリーンアップ Lambda（EventBridge Scheduler）
+- [ ] 9-7: CloudWatch Alarm（Lambda エラーレート・5xx → SNS）
 
 ## Phase 10: 認証 (Cognito)
 → 詳細: `docs/aws-architecture.md`
 
-#### タスク
-- 10-1: Cognito User Pool（セルフサインアップ無効・SRP認証・TOTP MFA）
-- 10-2: API Gateway JWT Authorizer（書き込み系エンドポイントに適用）
-- 10-3: フロントエンド: `LoginModal` コンポーネント
-- 10-4: フロントエンド: `useAuth` フック
+- [ ] 10-1: Cognito User Pool Terraform（セルフサインアップ無効・SRP・TOTP MFA）
+- [ ] 10-2: API Gateway JWT Authorizer（書き込み系エンドポイントに適用）
+- [ ] 10-3: フロントエンド: `LoginModal` コンポーネント
+- [ ] 10-4: フロントエンド: `useAuth` フック
 
 ## Phase 11: フロントエンドAWS統合
 → 詳細: `docs/aws-architecture.md`
 
-#### タスク
-- 11-1: `AwsCastleRepository` 実装
-- 11-2: `AwsImageStorage` 実装（Presigned URL）
-- 11-3: `cognitoAuth.ts` 実装
-- 11-4: `App.tsx` 統合（認証連携・repository切り替え）
-- 11-5: localStorage データ移行スクリプト
+- [ ] 11-1: `AwsCastleRepository` 実装
+- [ ] 11-2: `AwsImageStorage` 実装（Presigned URL）
+- [ ] 11-3: `cognitoAuth.ts` 実装
+- [ ] 11-4: `App.tsx` 統合（認証連携・repository切り替え）
+- [ ] 11-5: localStorage データ移行スクリプト
 
 ## Phase 12: CI/CD (GitHub Actions)
 → 詳細: `docs/aws-architecture.md`
 
-#### タスク
-- 12-1: IAM OIDC Provider + GitHub Actions ロール（Terraform、`modules/cicd/`）
-- 12-2: Terraform State バックエンドを S3 へ移行（tfstate バケット + ロックテーブルを Terraform 管理下へ）
-- 12-3: CI ワークフロー（`.github/workflows/ci.yml`）: lint・typecheck・build（AWS不要）
-- 12-4: CD インフラワークフロー（`.github/workflows/cd-infra.yml`）: terraform plan/apply
-- 12-5: CD フロントエンドワークフロー（`.github/workflows/cd-frontend.yml`）: build → S3 sync → CloudFront invalidation
+- [ ] 12-1: IAM OIDC Provider + GitHub Actions ロール（Terraform、`modules/cicd/`）
+- [ ] 12-2: Terraform State バックエンドを S3 へ移行
+- [ ] 12-3: CI ワークフロー（`.github/workflows/ci.yml`）
+- [ ] 12-4: CD インフラワークフロー（`.github/workflows/cd-infra.yml`）
+- [ ] 12-5: CD フロントエンドワークフロー（`.github/workflows/cd-frontend.yml`）
