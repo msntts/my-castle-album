@@ -66,11 +66,11 @@
 
 ---
 
-## Phase 8: AWS基盤 (CDK・DynamoDB・S3・CloudFront)
+## Phase 8: AWS基盤 (Terraform・DynamoDB・S3・CloudFront)
 → 詳細: `docs/aws-architecture.md`
 
 #### タスク
-- 8-1: `packages/infra` パッケージ作成（CDK TypeScript）
+- 8-1: `packages/infra` パッケージ作成（Terraform）
 - 8-2: DynamoDB テーブル定義（シングルテーブル設計）
 - 8-3: S3 バケット（BlockPublicAccess・CORS）
 - 8-4: CloudFront ディストリビューション（OAC・HTTPS強制）

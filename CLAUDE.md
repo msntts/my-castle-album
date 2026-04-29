@@ -5,7 +5,7 @@
 - **モノレポ**: pnpm workspaces
   - `packages/frontend`: React + TypeScript (Vite)
   - `packages/shared`: 共有型定義
-  - `packages/infra`: AWS CDK TypeScript（Phase 8以降）
+  - `packages/infra`: Terraform（Phase 8以降）
 - **地図**: Leaflet.js + OpenStreetMap（APIキー不要）
 - **ストレージ**: localStorage → AWS（DynamoDB + S3）移行予定
 

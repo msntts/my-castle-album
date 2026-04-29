@@ -18,3 +18,10 @@ desktop.ini
 
 # pnpm
 .pnpm-store/
+
+# Terraform
+packages/infra/.terraform/
+packages/infra/terraform.tfstate
+packages/infra/terraform.tfstate.backup
+packages/infra/*.tfvars
+# .terraform.lock.hcl はコミット対象（provider バージョン固定・サプライチェーン攻撃防止）

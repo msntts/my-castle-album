@@ -46,9 +46,9 @@ graph TB
 
 ---
 
-## Phase 8: AWS基盤 (CDK・DynamoDB・S3・CloudFront)
+## Phase 8: AWS基盤 (Terraform・DynamoDB・S3・CloudFront)
 
-### 8-0: CDK デプロイ前提条件
+### 8-0: Terraform デプロイ前提条件
 
 Phase 8 着手前に以下を準備する。
 
@@ -58,19 +58,43 @@ aws configure  # または aws sso login
 aws sts get-caller-identity  # 疎通確認
 ```
 
-**2. CDK Bootstrap（初回のみ）**
+**2. Terraform インストール（1.x）**
 ```bash
-npx cdk bootstrap aws://{ACCOUNT_ID}/ap-northeast-1
+terraform -version
 ```
 
-**3. デプロイ方針（どちらか選択）**
+**3. State バックエンド（S3 + DynamoDB ロック）**
+
+個人開発初期はローカル state で可。将来 CI/CD 化する際は S3 バックエンドに移行する。
+
+```hcl
+# backend.tf（S3バックエンド・移行後）
+terraform {
+  backend "s3" {
+    bucket         = "my-castle-album-tfstate"
+    key            = "infra/terraform.tfstate"
+    region         = "ap-northeast-1"
+    dynamodb_table = "my-castle-album-tfstate-lock"
+    encrypt        = true
+  }
+}
+```
+
+**4. 初期化・デプロイ**
+```bash
+terraform init
+terraform plan
+terraform apply
+```
+
+**5. デプロイ方針（どちらか選択）**
 
 | 方式 | 用途 | Credential 管理 |
 |------|------|----------------|
 | ローカル手動デプロイ | 個人開発（当面はこちら） | `~/.aws/credentials`（IAM User または SSO） |
 | CI/CD（GitHub Actions） | 将来自動化する場合 | OIDC による一時クレデンシャル（アクセスキー不要） |
 
-当面はローカル手動デプロイで進める。CI/CD 化する際は GitHub Actions の `aws-actions/configure-aws-credentials` + OIDC を採用する（長期アクセスキーをシークレットに保存しない）。
+CI/CD 化する際は GitHub Actions の `aws-actions/configure-aws-credentials` + OIDC を採用する（長期アクセスキーをシークレットに保存しない）。
 
 ---
 
@@ -78,23 +102,57 @@ npx cdk bootstrap aws://{ACCOUNT_ID}/ap-northeast-1
 
 ```
 packages/infra/
-  bin/
-    app.ts            ← CDK App エントリーポイント
-  lib/
-    storage-stack.ts  ← DynamoDB + S3
-    api-stack.ts      ← Lambda + API Gateway
-    auth-stack.ts     ← Cognito
-  lambda/
+  main.tf              ← provider + backend 設定
+  variables.tf         ← 変数定義
+  outputs.tf           ← 出力値（API URL・Cognito ID 等）
+  terraform.tfvars.example  ← 変数サンプル（gitignore 対象外）
+  modules/
+    storage/           ← DynamoDB + S3 + CloudFront
+      main.tf
+      variables.tf
+      outputs.tf
+    api/               ← Lambda + API Gateway HTTP API
+      main.tf
+      variables.tf
+      outputs.tf
+    auth/              ← Cognito User Pool
+      main.tf
+      variables.tf
+      outputs.tf
+  lambda/              ← Lambda ソースコード（TypeScript + esbuild でバンドル）
     castles/
       handler.ts
     photos/
       handler.ts
-  package.json
-  tsconfig.json
-  cdk.json
 ```
 
-依存: `aws-cdk-lib`, `constructs`, `esbuild`（Lambda bundling用）
+**`main.tf` の provider 設定:**
+```hcl
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "ap-northeast-1"
+}
+```
+
+**.gitignore に追記:**
+```
+packages/infra/.terraform/
+packages/infra/terraform.tfstate
+packages/infra/terraform.tfstate.backup
+packages/infra/*.tfvars
+# .terraform.lock.hcl はコミット対象（provider バージョン固定・サプライチェーン攻撃防止）
+```
+
+（`terraform.tfvars.example` と `.terraform.lock.hcl` はコミット対象。実値を書いた `terraform.tfvars` は gitignore）
 
 ### 8-2: DynamoDB テーブル設計
 
@@ -122,7 +180,29 @@ packages/infra/
 | 写真追加 | PutItem: `PK=CASTLE#{id}, SK=PHOTO#{photoId}` |
 | 写真削除 | DeleteItem: `PK=CASTLE#{id}, SK=PHOTO#{photoId}` |
 
-CDK: `billing: dynamodb.Billing.onDemand()`（PAY_PER_REQUEST）
+**Terraform HCL（`modules/storage/main.tf` 抜粋）:**
+```hcl
+resource "aws_dynamodb_table" "main" {
+  name         = "MyCastleAlbum"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "PK"
+  range_key    = "SK"
+
+  attribute { name = "PK";     type = "S" }
+  attribute { name = "SK";     type = "S" }
+  attribute { name = "GSI1PK"; type = "S" }
+  attribute { name = "GSI1SK"; type = "S" }
+
+  global_secondary_index {
+    name            = "GSI1"
+    hash_key        = "GSI1PK"
+    range_key       = "GSI1SK"
+    projection_type = "ALL"
+  }
+
+  lifecycle { prevent_destroy = true }
+}
+```
 
 ### 8-3: S3 バケット設計
 
@@ -136,12 +216,102 @@ CDK: `billing: dynamodb.Billing.onDemand()`（PAY_PER_REQUEST）
 photos/{castleId}/{photoId}.jpg
 ```
 
+**Terraform HCL（`modules/storage/main.tf` 抜粋）:**
+```hcl
+resource "aws_s3_bucket" "photos" {
+  bucket = "my-castle-album-photos-${data.aws_caller_identity.current.account_id}-${var.region}"
+  lifecycle { prevent_destroy = true }
+}
+
+resource "aws_s3_bucket_public_access_block" "photos" {
+  bucket                  = aws_s3_bucket.photos.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "photos" {
+  bucket = aws_s3_bucket.photos.id
+  rule {
+    apply_server_side_encryption_by_default { sse_algorithm = "AES256" }
+  }
+}
+
+resource "aws_s3_bucket_cors_configuration" "photos" {
+  bucket = aws_s3_bucket.photos.id
+  cors_rule {
+    allowed_methods = ["GET", "PUT"]
+    allowed_origins = [var.frontend_origin]  # 本番ドメインのみ
+    allowed_headers = ["Content-Type", "x-amz-*", "Authorization"]  # 最小権限
+    max_age_seconds = 3000
+  }
+}
+```
+
 ### 8-4: CloudFront ディストリビューション
 
 - OAC（Origin Access Control）でS3に接続（OAIは非推奨のため不使用）
-- `REDIRECT_TO_HTTPS` 強制
-- `PRICE_CLASS_200`（アジア・北米・欧州含む）
+- `redirect-to-https` 強制
+- `PriceClass_200`（アジア・北米・欧州含む）
 - S3バケットポリシーは CloudFront の SourceArn で絞る
+
+**Terraform HCL（`modules/storage/main.tf` 抜粋）:**
+```hcl
+resource "aws_cloudfront_origin_access_control" "photos" {
+  name                              = "photos-oac"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+resource "aws_cloudfront_distribution" "photos" {
+  enabled         = true
+  price_class     = "PriceClass_200"
+
+  origin {
+    domain_name              = aws_s3_bucket.photos.bucket_regional_domain_name
+    origin_id                = "photos-s3"
+    origin_access_control_id = aws_cloudfront_origin_access_control.photos.id
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "photos-s3"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    forwarded_values {
+      query_string = false
+      cookies { forward = "none" }
+    }
+  }
+
+  restrictions {
+    geo_restriction { restriction_type = "none" }
+  }
+
+  viewer_certificate { cloudfront_default_certificate = true }
+}
+
+# S3 バケットポリシー: CloudFront OAC のみ GET 許可
+resource "aws_s3_bucket_policy" "photos" {
+  bucket = aws_s3_bucket.photos.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "cloudfront.amazonaws.com" }
+      Action    = "s3:GetObject"
+      Resource  = "${aws_s3_bucket.photos.arn}/*"
+      Condition = {
+        StringEquals = {
+          "AWS:SourceArn" = aws_cloudfront_distribution.photos.arn
+        }
+      }
+    }]
+  })
+}
+```
 
 ---
 
@@ -205,7 +375,7 @@ photos/{castleId}/{photoId}.jpg
 | `selfSignUpEnabled` | false | 招待制・サイト所有者1名のみ |
 | 認証フロー | SRP (`userSrpAuth`) | 平文パスワードを送信しない |
 | `userPasswordAuth` | false | 平文認証を明示的に無効化 |
-| MFA | TOTP Required | 管理者1名のみのため全員強制。**移行手順: ① 管理者アカウント作成 → ② TOTP アプリで設定完了 → ③ CDK で Required に変更してデプロイ。手順②③を逆にするとサインインが即ブロックされる。ロールバック: ブロックされた場合は AWS Console から Cognito User Pool の MFA 設定を Optional に一時戻し、TOTP 設定後に再度 Required にする** |
+| MFA | TOTP Required | 管理者1名のみのため全員強制。**移行手順: ① 管理者アカウント作成 → ② TOTP アプリで設定完了 → ③ `mfa_configuration = "ON"` で `terraform apply`。手順②③を逆にするとサインインが即ブロックされる。ロールバック: ブロックされた場合は AWS Console から Cognito User Pool の MFA 設定を Optional に一時戻し、TOTP 設定後に再度 `terraform apply`** |
 | パスワード | 12文字以上・大小英数記号必須 | |
 | `generateSecret` | false | SPAはクライアントシークレット不要 |
 | accessToken 有効期限 | 1時間 | |
@@ -222,18 +392,59 @@ photos/{castleId}/{photoId}.jpg
 - **accessToken を Bearer に使う**（idToken は身元証明用。API Gateway に渡すと email 等の PII がログに記録される）
 - **refreshToken は sessionStorage 保持**（localStorage はタブ跨ぎで永続するためセッション奪取リスクが高い。sessionStorage はタブ閉鎖で自動クリア）
 
-**JWT Authorizer CDK 設定（`api-stack.ts`）:**
-```typescript
-const authorizer = new apigwv2authorizers.HttpJwtAuthorizer(
-  'CognitoAuthorizer',
-  `https://cognito-idp.${cdk.Aws.REGION}.amazonaws.com/${userPool.userPoolId}`,
-  {
-    jwtAudience: [userPoolClient.userPoolClientId],
-    // accessToken を使うため tokenUse を明示（省略すると id/access 両方許可になる）
-    identitySource: ['$request.header.Authorization'],
+**Terraform HCL（`modules/auth/main.tf` 抜粋）:**
+```hcl
+resource "aws_cognito_user_pool" "main" {
+  name                     = "MyCastleAlbumAdmins"
+  username_attributes      = ["email"]
+
+  admin_create_user_config { allow_admin_create_user_only = true }
+
+  password_policy {
+    minimum_length    = 12
+    require_lowercase = true
+    require_uppercase = true
+    require_numbers   = true
+    require_symbols   = true
   }
-);
-// Cognito 側では accessToken の aud クレームが client_id と一致するかを自動検証する
+
+  mfa_configuration = "ON"  # TOTP Required
+  software_token_mfa_configuration { enabled = true }
+
+  lifecycle { prevent_destroy = true }
+}
+
+resource "aws_cognito_user_pool_client" "spa" {
+  name         = "frontend-spa"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  explicit_auth_flows            = ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
+  generate_secret                = false
+  prevent_user_existence_errors  = "ENABLED"  # ユーザー列挙防止
+
+  access_token_validity  = 60    # 分
+  refresh_token_validity = 30    # 日
+  id_token_validity      = 60    # 分
+
+  token_validity_units {
+    access_token  = "minutes"
+    refresh_token = "days"
+    id_token      = "minutes"
+  }
+}
+
+# API Gateway HTTP API の JWT Authorizer（modules/api/main.tf）
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.main.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "cognito-jwt"
+
+  jwt_configuration {
+    issuer   = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+    audience = [aws_cognito_user_pool_client.spa.id]
+  }
+}
 ```
 
 > **必須実装**: API Gateway HTTP API の JWT Authorizer は `token_use` クレームを強制できない。Lambda ハンドラーの先頭で以下を **必須チェック** とし、不一致時は即 401 を返すこと（Phase 9 タスク 9-5）。
