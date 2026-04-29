@@ -71,6 +71,13 @@ resource "aws_s3_bucket" "photos" {
   }
 }
 
+resource "aws_s3_bucket_ownership_controls" "photos" {
+  bucket = aws_s3_bucket.photos.id
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "photos" {
   bucket                  = aws_s3_bucket.photos.id
   block_public_acls       = true
@@ -111,6 +118,13 @@ resource "aws_s3_bucket" "spa" {
 
   lifecycle {
     prevent_destroy = true
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "spa" {
+  bucket = aws_s3_bucket.spa.id
+  rule {
+    object_ownership = "BucketOwnerEnforced"
   }
 }
 
