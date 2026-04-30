@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ulid } from 'ulid';
 import type { Castle } from '../../domain/castle/Castle';
 
 interface NominatimResult {
@@ -45,7 +46,7 @@ export function AddCastleForm({ onAdd }: AddCastleFormProps) {
 
   async function select(result: NominatimResult) {
     const castle: Omit<Castle, 'photos'> = {
-      castleId: `castle-${result.place_id}`,
+      castleId: ulid(),
       name: query.trim(),
       location: {
         latitude: parseFloat(result.lat),

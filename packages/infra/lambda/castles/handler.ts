@@ -4,7 +4,6 @@ import type {
 } from "aws-lambda";
 import {
   BatchWriteCommand,
-  GetCommand,
   PutCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
@@ -126,13 +125,6 @@ async function updateCastle(
   if (!isValidBody(body)) {
     return badRequest("name (string), latitude (number), longitude (number) are required");
   }
-  const { Item } = await ddb.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `CASTLE#${castleId}`, SK: "METADATA" },
-    })
-  );
-  if (!Item) return notFound();
   await ddb.send(
     new PutCommand({
       TableName: TABLE_NAME,

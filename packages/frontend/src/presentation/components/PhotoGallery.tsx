@@ -20,19 +20,21 @@ export function PhotoGallery({ photos, castleId, isAdminMode, onPhotosChanged }:
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (photos.length === 0) { setUrls({}); return; }
+    let cancelled = false;
     Promise.all(
       photos.map(async (photo) => {
         const url = await imageStorage.getUrl(photo.photoId);
         return [photo.photoId, url] as const;
       })
     ).then((entries) => {
+      if (cancelled) return;
       const map: Record<string, string> = {};
       for (const [id, url] of entries) {
         if (url) map[id] = url;
       }
       setUrls(map);
     });
+    return () => { cancelled = true; };
   }, [photos]);
 
   // 7-2: 複数ファイル同時アップロード
