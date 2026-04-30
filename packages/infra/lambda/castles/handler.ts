@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { ulid } from "ulid";
 import { ddb, TABLE_NAME } from "../shared/dynamodb";
+import { requireAuth } from "../shared/auth";
 import {
   badRequest,
   created,
@@ -19,22 +20,6 @@ import {
   ok,
   unauthorized,
 } from "../shared/response";
-
-interface JwtClaims {
-  token_use?: string;
-}
-interface AuthorizerContext {
-  jwt?: { claims?: JwtClaims };
-}
-
-// API Gateway JWT Authorizer が Cognito JWKS で署名・iss・audience を自動検証する。
-// ここでは token_use のみ追加チェックして idToken の誤送信を防ぐ（Phase 9-5 で完全実装）。
-function requireAuth(event: APIGatewayProxyEventV2): boolean {
-  const auth = (
-    event.requestContext as unknown as { authorizer?: AuthorizerContext }
-  ).authorizer;
-  return auth?.jwt?.claims?.token_use === "access";
-}
 
 interface CastleInput {
   name: unknown;

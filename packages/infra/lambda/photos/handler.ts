@@ -8,6 +8,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ulid } from "ulid";
 import { ddb, TABLE_NAME } from "../shared/dynamodb";
 import { s3Client, PHOTOS_BUCKET_NAME, CLOUDFRONT_DOMAIN } from "../shared/s3";
+import { requireAuth } from "../shared/auth";
 import {
   badRequest,
   created,
@@ -16,22 +17,6 @@ import {
   notFound,
   unauthorized,
 } from "../shared/response";
-
-interface JwtClaims {
-  token_use?: string;
-}
-interface AuthorizerContext {
-  jwt?: { claims?: JwtClaims };
-}
-
-// API Gateway JWT Authorizer が Cognito JWKS で署名・iss・audience を自動検証する。
-// ここでは token_use のみ追加チェックして idToken の誤送信を防ぐ（Phase 9-5 で完全実装）。
-function requireAuth(event: APIGatewayProxyEventV2): boolean {
-  const auth = (
-    event.requestContext as unknown as { authorizer?: AuthorizerContext }
-  ).authorizer;
-  return auth?.jwt?.claims?.token_use === "access";
-}
 
 const ALLOWED_CONTENT_TYPES = new Set([
   "image/jpeg",
