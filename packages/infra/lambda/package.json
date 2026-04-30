@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "pnpm build:castles && pnpm build:photos",
+    "build": "pnpm build:castles && pnpm build:photos && pnpm build:cleanup",
     "build:castles": "esbuild castles/handler.ts --bundle --platform=node --target=node22 --outfile=dist/castles/index.js",
-    "build:photos": "esbuild photos/handler.ts --bundle --platform=node --target=node22 --outfile=dist/photos/index.js"
+    "build:photos": "esbuild photos/handler.ts --bundle --platform=node --target=node22 --outfile=dist/photos/index.js",
+    "build:cleanup": "esbuild cleanup/handler.ts --bundle --platform=node --target=node22 --outfile=dist/cleanup/index.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.0.0",

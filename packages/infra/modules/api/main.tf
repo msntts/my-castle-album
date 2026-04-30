@@ -1,6 +1,12 @@
 # Lambda ビルドは terraform apply 前に実行すること:
 #   cd packages/infra/lambda && pnpm install && pnpm build
 
+data "archive_file" "cleanup" {
+  type        = "zip"
+  source_file = "${path.module}/../../lambda/dist/cleanup/index.js"
+  output_path = "${path.module}/../../lambda/dist/cleanup.zip"
+}
+
 data "archive_file" "castles" {
   type        = "zip"
   source_file = "${path.module}/../../lambda/dist/castles/index.js"
@@ -275,4 +281,134 @@ resource "aws_lambda_permission" "photos" {
   function_name = aws_lambda_function.photos.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+}
+
+# ─────────────────────────────────────────────────────────
+# 孤立 PHOTO クリーンアップ Lambda + EventBridge Scheduler
+# ─────────────────────────────────────────────────────────
+
+resource "aws_iam_role" "cleanup" {
+  name = "my-castle-album-cleanup-handler"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cleanup_basic" {
+  role       = aws_iam_role.cleanup.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "cleanup_permissions" {
+  name = "dynamodb-s3"
+  role = aws_iam_role.cleanup.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:Scan",
+          "dynamodb:BatchWriteItem",
+        ]
+        Resource = var.table_arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = var.photos_bucket_arn
+        Condition = {
+          StringLike = { "s3:prefix" = ["photos/*"] }
+        }
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:DeleteObject"]
+        Resource = "${var.photos_bucket_arn}/photos/*"
+      },
+    ]
+  })
+}
+
+resource "aws_cloudwatch_log_group" "cleanup" {
+  name              = "/aws/lambda/my-castle-album-cleanup-handler"
+  retention_in_days = 30
+}
+
+resource "aws_lambda_function" "cleanup" {
+  function_name    = "my-castle-album-cleanup-handler"
+  role             = aws_iam_role.cleanup.arn
+  handler          = "index.handler"
+  runtime          = "nodejs22.x"
+  architectures    = ["arm64"]
+  memory_size      = 128
+  timeout          = 300
+  filename         = data.archive_file.cleanup.output_path
+  source_code_hash = data.archive_file.cleanup.output_base64sha256
+
+  environment {
+    variables = {
+      TABLE_NAME         = var.table_name
+      PHOTOS_BUCKET_NAME = var.photos_bucket_name
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.cleanup]
+
+  tags = {
+    Project = "my-castle-album"
+  }
+}
+
+resource "aws_iam_role" "scheduler" {
+  name = "my-castle-album-cleanup-scheduler"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "scheduler.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "scheduler_invoke" {
+  name = "invoke-cleanup"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "lambda:InvokeFunction"
+      Resource = aws_lambda_function.cleanup.arn
+    }]
+  })
+}
+
+# 毎週日曜 2:00 JST（= 土曜 17:00 UTC）に実行
+resource "aws_scheduler_schedule" "cleanup" {
+  name       = "my-castle-album-photo-cleanup"
+  group_name = "default"
+
+  flexible_time_window {
+    mode                      = "FLEXIBLE"
+    maximum_window_in_minutes = 60
+  }
+
+  schedule_expression          = "cron(0 17 ? * SAT *)"
+  schedule_expression_timezone = "UTC"
+
+  target {
+    arn      = aws_lambda_function.cleanup.arn
+    role_arn = aws_iam_role.scheduler.arn
+  }
 }
