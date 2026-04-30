@@ -64,17 +64,9 @@
 - Phase 8: AWS基盤 (Terraform・DynamoDB・S3・CloudFront) `ca90fa8..9a297a9`
 - Phase 9: バックエンドAPI (Lambda・API Gateway) `aa4f096..c1ebbc3`
 - Phase 10: 認証 (Cognito) `fc4e645..bfc492f`
+- Phase 11: フロントエンドAWS統合 `c021479..a60764e`
 
 ---
-
-## Phase 11: フロントエンドAWS統合
-→ 詳細: `docs/aws-architecture.md`
-
-- [x] 11-1: `AwsCastleRepository` 実装
-- [x] 11-2: `AwsImageStorage` 実装（Presigned URL）
-- [x] 11-3: `cognitoAuth.ts` 実装
-- [x] 11-4: `App.tsx` 統合（認証連携・repository切り替え）
-- [ ] 11-5: localStorage データ移行スクリプト
 
 ## Phase 12: CI/CD (GitHub Actions)
 → 詳細: `docs/aws-architecture.md`
