@@ -62,20 +62,9 @@
 - Phase 6: 管理機能 `e2f9b94..f282ca5`
 - Phase 7: ギャラリー改善 `026cf91..da1c911`
 - Phase 8: AWS基盤 (Terraform・DynamoDB・S3・CloudFront) `ca90fa8..9a297a9`
+- Phase 9: バックエンドAPI (Lambda・API Gateway) `aa4f096..c1ebbc3`
 
 ---
-
-
-## Phase 9: バックエンドAPI (Lambda・API Gateway) [REVIEW]
-→ 詳細: `docs/aws-architecture.md`
-
-- [x] 9-1: Lambda ソースコード（castles-handler・photos-handler TypeScript）→ [詳細](docs/briefs/step-9-1-lambda.md)
-- [x] 9-2: Lambda Terraform リソース + API Gateway HTTP API + CORS
-- [x] 9-3: Castle CRUD エンドポイント実装（Lambda コード）
-- [ ] 9-4: 写真 Presigned URL フロー実装（Lambda コード）
-- [ ] 9-5: Lambda 内 `token_use: 'access'` クレーム検証
-- [ ] 9-6: 孤立 PHOTO クリーンアップ Lambda（EventBridge Scheduler）
-- [ ] 9-7: CloudWatch Alarm（Lambda エラーレート・5xx → SNS）
 
 ## Phase 10: 認証 (Cognito)
 → 詳細: `docs/aws-architecture.md`
