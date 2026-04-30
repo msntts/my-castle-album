@@ -2,16 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   AuthenticationDetails,
   CognitoUser,
-  CognitoUserPool,
   CognitoUserSession,
 } from 'amazon-cognito-identity-js';
-
-// sessionStorage を使用: refreshToken はタブ閉鎖で自動クリア
-const userPool = new CognitoUserPool({
-  UserPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID ?? '',
-  ClientId: import.meta.env.VITE_COGNITO_CLIENT_ID ?? '',
-  Storage: window.sessionStorage,
-});
+import { userPool } from '../../infrastructure/aws/cognitoAuth';
 
 interface AuthState {
   isAuthenticated: boolean;
