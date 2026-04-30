@@ -35,4 +35,6 @@ module "api" {
   frontend_origin    = var.frontend_origin
   cloudfront_domain  = module.storage.cloudfront_domain
   alert_email        = var.alert_email
+  cognito_issuer_url = module.auth.issuer_url
+  cognito_audience   = module.auth.audience
 }

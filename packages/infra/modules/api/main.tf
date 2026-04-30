@@ -204,6 +204,18 @@ resource "aws_apigatewayv2_stage" "default" {
   auto_deploy = true
 }
 
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.main.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "cognito-jwt"
+
+  jwt_configuration {
+    issuer   = var.cognito_issuer_url
+    audience = var.cognito_audience
+  }
+}
+
 resource "aws_apigatewayv2_integration" "castles" {
   api_id                 = aws_apigatewayv2_api.main.id
   integration_type       = "AWS_PROXY"
@@ -231,39 +243,45 @@ resource "aws_apigatewayv2_route" "get_castle" {
   target    = "integrations/${aws_apigatewayv2_integration.castles.id}"
 }
 
-# 書き込み系ルート
-# 現状 authorization_type = "NONE"（API Gateway レベルの認証なし）だが、
-# Lambda 側の requireAuth() が JWT Authorizer なし = authorizer undefined の場合に
-# token_use チェックが false となり 401 を返すため、実際の書き込みは不可能。
-# Phase 10 で JWT Authorizer を追加して API Gateway レベルの defense-in-depth を実装する。
+# 書き込み系ルート（JWT Authorizer で Cognito JWKS 検証。Lambda 側 requireAuth() は二重チェック）
 resource "aws_apigatewayv2_route" "post_castle" {
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = "POST /castles"
-  target    = "integrations/${aws_apigatewayv2_integration.castles.id}"
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /castles"
+  target             = "integrations/${aws_apigatewayv2_integration.castles.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_route" "put_castle" {
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = "PUT /castles/{castleId}"
-  target    = "integrations/${aws_apigatewayv2_integration.castles.id}"
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /castles/{castleId}"
+  target             = "integrations/${aws_apigatewayv2_integration.castles.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_route" "delete_castle" {
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = "DELETE /castles/{castleId}"
-  target    = "integrations/${aws_apigatewayv2_integration.castles.id}"
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /castles/{castleId}"
+  target             = "integrations/${aws_apigatewayv2_integration.castles.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_route" "post_photo" {
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = "POST /castles/{castleId}/photos"
-  target    = "integrations/${aws_apigatewayv2_integration.photos.id}"
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /castles/{castleId}/photos"
+  target             = "integrations/${aws_apigatewayv2_integration.photos.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_route" "delete_photo" {
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = "DELETE /castles/{castleId}/photos/{photoId}"
-  target    = "integrations/${aws_apigatewayv2_integration.photos.id}"
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /castles/{castleId}/photos/{photoId}"
+  target             = "integrations/${aws_apigatewayv2_integration.photos.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 # API Gateway から Lambda を呼び出す権限
