@@ -36,3 +36,13 @@ output "api_endpoint" {
   description = "API Gateway エンドポイント URL（フロントエンド環境変数 VITE_API_BASE_URL に使用）"
   value       = module.api.api_endpoint
 }
+
+output "cognito_user_pool_id" {
+  description = "Cognito User Pool ID（フロントエンド環境変数 VITE_COGNITO_USER_POOL_ID に使用）"
+  value       = module.auth.user_pool_id
+}
+
+output "cognito_user_pool_client_id" {
+  description = "Cognito User Pool Client ID（フロントエンド環境変数 VITE_COGNITO_CLIENT_ID に使用）"
+  value       = module.auth.user_pool_client_id
+}

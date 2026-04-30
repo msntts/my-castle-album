@@ -21,6 +21,11 @@ module "storage" {
   account_id      = data.aws_caller_identity.current.account_id
 }
 
+module "auth" {
+  source = "./modules/auth"
+  region = var.region
+}
+
 module "api" {
   source             = "./modules/api"
   table_name         = module.storage.table_name
