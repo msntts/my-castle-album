@@ -1,20 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CastleId } from '../../domain/castle/Castle';
+import type { CastleRepository } from '../../domain/castle/CastleRepository';
+import type { ImageStorage } from '../../domain/photo/ImageStorage';
 import type { Photo } from '../../domain/photo/Photo';
-import { LocalStorageCastleRepository } from '../../infrastructure/localStorage/LocalStorageCastleRepository';
-import { LocalStorageImageStorage } from '../../infrastructure/localStorage/LocalStorageImageStorage';
-
-const imageStorage = new LocalStorageImageStorage();
-const castleRepository = new LocalStorageCastleRepository();
 
 interface PhotoGalleryProps {
   photos: Photo[];
   castleId: CastleId;
   isAdminMode: boolean;
   onPhotosChanged: (photos: Photo[]) => void;
+  imageStorage: ImageStorage;
+  castleRepository?: CastleRepository;
 }
 
-export function PhotoGallery({ photos, castleId, isAdminMode, onPhotosChanged }: PhotoGalleryProps) {
+export function PhotoGallery({
+  photos,
+  castleId,
+  isAdminMode,
+  onPhotosChanged,
+  imageStorage,
+  castleRepository,
+}: PhotoGalleryProps) {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,12 +41,20 @@ export function PhotoGallery({ photos, castleId, isAdminMode, onPhotosChanged }:
       setUrls(map);
     });
     return () => { cancelled = true; };
-  }, [photos]);
+  }, [photos, imageStorage]);
 
-  // 7-2: 複数ファイル同時アップロード
+  const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
+  const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
+
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
+    const invalid = files.find((f) => !ALLOWED_TYPES.has(f.type) || f.size > MAX_SIZE_BYTES);
+    if (invalid) {
+      alert('JPEG / PNG / WebP / HEIC のみ、20MB 以下のファイルをアップロードしてください。');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     const newPhotos: Photo[] = await Promise.all(
       files.map(async (file) => {
         const photoId = `photo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -49,22 +63,24 @@ export function PhotoGallery({ photos, castleId, isAdminMode, onPhotosChanged }:
       })
     );
     const updatedPhotos = [...photos, ...newPhotos];
-    const castle = await castleRepository.findById(castleId);
-    if (castle) await castleRepository.save({ ...castle, photos: updatedPhotos });
+    if (castleRepository) {
+      const castle = await castleRepository.findById(castleId);
+      if (castle) await castleRepository.save({ ...castle, photos: updatedPhotos });
+    }
     onPhotosChanged(updatedPhotos);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  // 7-3: 写真削除
   async function handleDelete(photoId: string) {
     await imageStorage.delete(photoId);
     const updatedPhotos = photos.filter((p) => p.photoId !== photoId);
-    const castle = await castleRepository.findById(castleId);
-    if (castle) await castleRepository.save({ ...castle, photos: updatedPhotos });
+    if (castleRepository) {
+      const castle = await castleRepository.findById(castleId);
+      if (castle) await castleRepository.save({ ...castle, photos: updatedPhotos });
+    }
     onPhotosChanged(updatedPhotos);
   }
 
-  // 7-4: ライトボックスナビゲーション
   function moveLightbox(delta: number) {
     setLightboxIndex((i) => i === null ? null : (i + delta + photos.length) % photos.length);
   }
@@ -75,7 +91,6 @@ export function PhotoGallery({ photos, castleId, isAdminMode, onPhotosChanged }:
         <p style={{ margin: 0, color: '#999', fontSize: '0.85em' }}>写真はまだありません</p>
       )}
 
-      {/* 7-1: サムネイルグリッド */}
       {photos.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: isAdminMode ? '10px' : 0 }}>
           {photos.map((photo, index) => (
@@ -94,7 +109,6 @@ export function PhotoGallery({ photos, castleId, isAdminMode, onPhotosChanged }:
                   <div style={{ width: '100%', aspectRatio: '1', background: '#eee', borderRadius: '3px' }} />
                 )}
               </div>
-              {/* 7-3: 削除ボタン */}
               {isAdminMode && (
                 <button
                   onClick={() => handleDelete(photo.photoId)}
@@ -137,7 +151,6 @@ export function PhotoGallery({ photos, castleId, isAdminMode, onPhotosChanged }:
         </>
       )}
 
-      {/* 7-4: ライトボックス */}
       {lightboxIndex !== null && (
         <div
           onClick={() => setLightboxIndex(null)}

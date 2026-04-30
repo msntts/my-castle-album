@@ -70,9 +70,9 @@
 ## Phase 11: フロントエンドAWS統合
 → 詳細: `docs/aws-architecture.md`
 
-- [ ] 11-1: `AwsCastleRepository` 実装
-- [ ] 11-2: `AwsImageStorage` 実装（Presigned URL）
-- [ ] 11-3: `cognitoAuth.ts` 実装
+- [x] 11-1: `AwsCastleRepository` 実装
+- [x] 11-2: `AwsImageStorage` 実装（Presigned URL）
+- [x] 11-3: `cognitoAuth.ts` 実装
 - [ ] 11-4: `App.tsx` 統合（認証連携・repository切り替え）
 - [ ] 11-5: localStorage データ移行スクリプト
 

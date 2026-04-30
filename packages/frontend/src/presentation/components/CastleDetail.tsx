@@ -1,4 +1,6 @@
 import type { Castle } from '../../domain/castle/Castle';
+import type { CastleRepository } from '../../domain/castle/CastleRepository';
+import type { ImageStorage } from '../../domain/photo/ImageStorage';
 import { PhotoGallery } from './PhotoGallery';
 
 interface CastleDetailProps {
@@ -6,9 +8,18 @@ interface CastleDetailProps {
   isAdminMode: boolean;
   onClose: () => void;
   onCastleUpdated: (castle: Castle) => void;
+  imageStorage: ImageStorage;
+  castleRepository?: CastleRepository;
 }
 
-export function CastleDetail({ castle, isAdminMode, onClose, onCastleUpdated }: CastleDetailProps) {
+export function CastleDetail({
+  castle,
+  isAdminMode,
+  onClose,
+  onCastleUpdated,
+  imageStorage,
+  castleRepository,
+}: CastleDetailProps) {
   return (
     <div
       style={{
@@ -36,6 +47,8 @@ export function CastleDetail({ castle, isAdminMode, onClose, onCastleUpdated }: 
         castleId={castle.castleId}
         isAdminMode={isAdminMode}
         onPhotosChanged={(photos) => onCastleUpdated({ ...castle, photos })}
+        imageStorage={imageStorage}
+        castleRepository={castleRepository}
       />
     </div>
   );
