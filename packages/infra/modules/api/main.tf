@@ -412,3 +412,89 @@ resource "aws_scheduler_schedule" "cleanup" {
     role_arn = aws_iam_role.scheduler.arn
   }
 }
+
+# ─────────────────────────────────────────────────────────
+# CloudWatch Alarm（Lambda エラーレート・API Gateway 5xx → SNS）
+# ─────────────────────────────────────────────────────────
+
+resource "aws_sns_topic" "alerts" {
+  name = "my-castle-album-alerts"
+  tags = {
+    Project = "my-castle-album"
+  }
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+resource "aws_cloudwatch_metric_alarm" "castles_errors" {
+  alarm_name          = "my-castle-album-castles-handler-errors"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 1
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    FunctionName = aws_lambda_function.castles.function_name
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = {
+    Project = "my-castle-album"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "photos_errors" {
+  alarm_name          = "my-castle-album-photos-handler-errors"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 1
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    FunctionName = aws_lambda_function.photos.function_name
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = {
+    Project = "my-castle-album"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "apigw_5xx" {
+  alarm_name          = "my-castle-album-api-5xx"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "5XXError"
+  namespace           = "AWS/ApiGateway"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 1
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ApiId = aws_apigatewayv2_api.main.id
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = {
+    Project = "my-castle-album"
+  }
+}

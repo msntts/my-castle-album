@@ -11,3 +11,8 @@ variable "frontend_origin" {
     error_message = "frontend_origin は https:// で始まる必要があります。"
   }
 }
+
+variable "alert_email" {
+  type        = string
+  description = "CloudWatch Alarm の通知先メールアドレス"
+}
