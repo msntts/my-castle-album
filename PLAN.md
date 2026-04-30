@@ -69,9 +69,9 @@
 ## Phase 10: 認証 (Cognito)
 → 詳細: `docs/aws-architecture.md`
 
-- [ ] 10-1: Cognito User Pool Terraform（セルフサインアップ無効・SRP・TOTP MFA）
-- [ ] 10-2: API Gateway JWT Authorizer（書き込み系エンドポイントに適用）
-- [ ] 10-3: フロントエンド: `LoginModal` コンポーネント
+- [x] 10-1: Cognito User Pool Terraform（セルフサインアップ無効・SRP・TOTP MFA）
+- [x] 10-2: API Gateway JWT Authorizer（書き込み系エンドポイントに適用）
+- [x] 10-3: フロントエンド: `LoginModal` コンポーネント
 - [ ] 10-4: フロントエンド: `useAuth` フック
 
 ## Phase 11: フロントエンドAWS統合
