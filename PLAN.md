@@ -63,16 +63,9 @@
 - Phase 7: ギャラリー改善 `026cf91..da1c911`
 - Phase 8: AWS基盤 (Terraform・DynamoDB・S3・CloudFront) `ca90fa8..9a297a9`
 - Phase 9: バックエンドAPI (Lambda・API Gateway) `aa4f096..c1ebbc3`
+- Phase 10: 認証 (Cognito) `fc4e645..bfc492f`
 
 ---
-
-## Phase 10: 認証 (Cognito)
-→ 詳細: `docs/aws-architecture.md`
-
-- [x] 10-1: Cognito User Pool Terraform（セルフサインアップ無効・SRP・TOTP MFA）
-- [x] 10-2: API Gateway JWT Authorizer（書き込み系エンドポイントに適用）
-- [x] 10-3: フロントエンド: `LoginModal` コンポーネント
-- [ ] 10-4: フロントエンド: `useAuth` フック
 
 ## Phase 11: フロントエンドAWS統合
 → 詳細: `docs/aws-architecture.md`
