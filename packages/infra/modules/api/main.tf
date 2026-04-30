@@ -165,6 +165,7 @@ resource "aws_lambda_function" "photos" {
     variables = {
       TABLE_NAME         = var.table_name
       PHOTOS_BUCKET_NAME = var.photos_bucket_name
+      CLOUDFRONT_DOMAIN  = var.cloudfront_domain
     }
   }
 

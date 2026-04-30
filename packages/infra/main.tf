@@ -28,4 +28,5 @@ module "api" {
   photos_bucket_name = module.storage.photos_bucket_name
   photos_bucket_arn  = module.storage.photos_bucket_arn
   frontend_origin    = var.frontend_origin
+  cloudfront_domain  = module.storage.cloudfront_domain
 }

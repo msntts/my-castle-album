@@ -2,7 +2,20 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
-import { internalError, notFound, unauthorized } from "../shared/response";
+import { DeleteCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { ulid } from "ulid";
+import { ddb, TABLE_NAME } from "../shared/dynamodb";
+import { s3Client, PHOTOS_BUCKET_NAME, CLOUDFRONT_DOMAIN } from "../shared/s3";
+import {
+  badRequest,
+  created,
+  internalError,
+  noContent,
+  notFound,
+  unauthorized,
+} from "../shared/response";
 
 interface JwtClaims {
   token_use?: string;
@@ -20,6 +33,92 @@ function requireAuth(event: APIGatewayProxyEventV2): boolean {
   return auth?.jwt?.claims?.token_use === "access";
 }
 
+const ALLOWED_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+]);
+
+async function addPhoto(
+  castleId: string,
+  event: APIGatewayProxyEventV2
+): Promise<APIGatewayProxyResultV2> {
+  let body: { contentType?: unknown; caption?: unknown };
+  try {
+    body = JSON.parse(event.body ?? "{}") as typeof body;
+  } catch {
+    return badRequest("Invalid JSON");
+  }
+
+  const contentType = body.contentType;
+  if (typeof contentType !== "string" || !ALLOWED_CONTENT_TYPES.has(contentType)) {
+    return badRequest("contentType must be image/jpeg, image/png, image/webp, or image/heic");
+  }
+
+  const caption =
+    typeof body.caption === "string" && body.caption.trim() !== ""
+      ? body.caption.trim()
+      : undefined;
+
+  const photoId = ulid();
+  const s3Key = `photos/${castleId}/${photoId}`;
+
+  // Presigned URL 生成を先に行い、成功後にのみ DynamoDB に書き込む。
+  // 逆順だと URL 生成失敗時にオーファンレコードが残る。
+  const presignedUrl = await getSignedUrl(
+    s3Client,
+    new PutObjectCommand({
+      Bucket: PHOTOS_BUCKET_NAME,
+      Key: s3Key,
+      ContentType: contentType,
+    }),
+    { expiresIn: 300 }
+  );
+
+  await ddb.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: `CASTLE#${castleId}`,
+        SK: `PHOTO#${photoId}`,
+        ...(caption !== undefined ? { caption } : {}),
+      },
+    })
+  );
+
+  const imageUrl = `https://${CLOUDFRONT_DOMAIN}/${s3Key}`;
+  return created({ photoId, presignedUrl, imageUrl });
+}
+
+async function removePhoto(
+  castleId: string,
+  photoId: string
+): Promise<APIGatewayProxyResultV2> {
+  const { Attributes } = await ddb.send(
+    new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `CASTLE#${castleId}`, SK: `PHOTO#${photoId}` },
+      ReturnValues: "ALL_OLD",
+    })
+  );
+  if (!Attributes) return notFound();
+
+  try {
+    await s3Client.send(
+      new DeleteObjectCommand({
+        Bucket: PHOTOS_BUCKET_NAME,
+        Key: `photos/${castleId}/${photoId}`,
+      })
+    );
+  } catch (err) {
+    // S3 削除失敗は orphan として記録し、Phase 9-6 の定期クリーンアップで回収
+    console.error("S3 object deletion failed, may be orphaned:", err);
+  }
+
+  return noContent();
+}
+
 export const handler = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
@@ -28,7 +127,13 @@ export const handler = async (
       return unauthorized();
     }
 
-    // TODO(9-4): Photo Presigned URL フロー実装
+    const method = event.requestContext.http.method;
+    const castleId = event.pathParameters?.castleId;
+    const photoId = event.pathParameters?.photoId;
+
+    if (method === "POST" && castleId) return addPhoto(castleId, event);
+    if (method === "DELETE" && castleId && photoId) return removePhoto(castleId, photoId);
+
     return notFound();
   } catch (err) {
     return internalError(err);
