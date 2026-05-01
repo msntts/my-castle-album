@@ -26,6 +26,14 @@ module "auth" {
   region = var.region
 }
 
+module "cicd" {
+  source                      = "./modules/cicd"
+  spa_bucket_arn              = module.storage.spa_bucket_arn
+  cloudfront_distribution_arn = module.storage.cloudfront_distribution_arn
+  account_id                  = data.aws_caller_identity.current.account_id
+  region                      = var.region
+}
+
 module "api" {
   source             = "./modules/api"
   table_name         = module.storage.table_name

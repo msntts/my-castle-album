@@ -46,3 +46,13 @@ output "cognito_user_pool_client_id" {
   description = "Cognito User Pool Client ID（フロントエンド環境変数 VITE_COGNITO_CLIENT_ID に使用）"
   value       = module.auth.user_pool_client_id
 }
+
+output "github_terraform_role_arn" {
+  description = "GitHub Actions Terraform ロール ARN（GitHub Secrets: AWS_TERRAFORM_ROLE_ARN）"
+  value       = module.cicd.terraform_role_arn
+}
+
+output "github_deploy_role_arn" {
+  description = "GitHub Actions SPA デプロイロール ARN（GitHub Secrets: AWS_DEPLOY_ROLE_ARN）"
+  value       = module.cicd.deploy_role_arn
+}
