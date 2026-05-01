@@ -71,7 +71,7 @@
 ## Phase 12: CI/CD (GitHub Actions)
 → 詳細: `docs/aws-architecture.md`
 
-- [ ] 12-1: IAM OIDC Provider + GitHub Actions ロール（Terraform、`modules/cicd/`）
+- [x] 12-1: IAM OIDC Provider + GitHub Actions ロール（Terraform、`modules/cicd/`）
 - [ ] 12-2: Terraform State バックエンドを S3 へ移行
 - [ ] 12-3: CI ワークフロー（`.github/workflows/ci.yml`）
 - [ ] 12-4: CD インフラワークフロー（`.github/workflows/cd-infra.yml`）— `TF_VAR_alert_email` を GitHub Secrets に追加すること

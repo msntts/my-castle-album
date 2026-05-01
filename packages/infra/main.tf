@@ -6,6 +6,28 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  # S3 バックエンド（Phase 12-2 で有効化）
+  # 事前準備:
+  #   aws s3api create-bucket --bucket my-castle-album-tfstate \
+  #     --region ap-northeast-1 \
+  #     --create-bucket-configuration LocationConstraint=ap-northeast-1
+  #   aws s3api put-bucket-versioning --bucket my-castle-album-tfstate \
+  #     --versioning-configuration Status=Enabled
+  #   aws s3api put-public-access-block --bucket my-castle-album-tfstate \
+  #     --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+  #   aws dynamodb create-table --table-name my-castle-album-tfstate-lock \
+  #     --attribute-definitions AttributeName=LockID,AttributeType=S \
+  #     --key-schema AttributeName=LockID,KeyType=HASH \
+  #     --billing-mode PAY_PER_REQUEST --region ap-northeast-1
+  # 移行: terraform init -migrate-state
+  backend "s3" {
+    bucket         = "my-castle-album-tfstate"
+    key            = "infra/terraform.tfstate"
+    region         = "ap-northeast-1"
+    dynamodb_table = "my-castle-album-tfstate-lock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
