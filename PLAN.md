@@ -65,14 +65,4 @@
 - Phase 9: バックエンドAPI (Lambda・API Gateway) `aa4f096..c1ebbc3`
 - Phase 10: 認証 (Cognito) `fc4e645..bfc492f`
 - Phase 11: フロントエンドAWS統合 `c021479..a60764e`
-
----
-
-## Phase 12: CI/CD (GitHub Actions)
-→ 詳細: `docs/aws-architecture.md`
-
-- [x] 12-1: IAM OIDC Provider + GitHub Actions ロール（Terraform、`modules/cicd/`）
-- [x] 12-2: Terraform State バックエンドを S3 へ移行
-- [x] 12-3: CI ワークフロー（`.github/workflows/ci.yml`）
-- [x] 12-4: CD インフラワークフロー（`.github/workflows/cd-infra.yml`）— `TF_VAR_alert_email` を GitHub Secrets に追加すること
-- [x] 12-5: CD フロントエンドワークフロー（`.github/workflows/cd-frontend.yml`）
+- Phase 12: CI/CD (GitHub Actions) `04f5af9..c7d6e7c`
