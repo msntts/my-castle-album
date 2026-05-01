@@ -74,5 +74,5 @@
 - [x] 12-1: IAM OIDC Provider + GitHub Actions ロール（Terraform、`modules/cicd/`）
 - [x] 12-2: Terraform State バックエンドを S3 へ移行
 - [x] 12-3: CI ワークフロー（`.github/workflows/ci.yml`）
-- [ ] 12-4: CD インフラワークフロー（`.github/workflows/cd-infra.yml`）— `TF_VAR_alert_email` を GitHub Secrets に追加すること
-- [ ] 12-5: CD フロントエンドワークフロー（`.github/workflows/cd-frontend.yml`）
+- [x] 12-4: CD インフラワークフロー（`.github/workflows/cd-infra.yml`）— `TF_VAR_alert_email` を GitHub Secrets に追加すること
+- [x] 12-5: CD フロントエンドワークフロー（`.github/workflows/cd-frontend.yml`）
