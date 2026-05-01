@@ -1,0 +1,63 @@
+name: CD Infra
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/infra/**"
+
+# Terraform apply は同時実行しない（state ロック競合防止）
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Lambda dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: packages/infra/lambda
+
+      - name: Build Lambda
+        run: pnpm build
+        working-directory: packages/infra/lambda
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: packages/infra
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+        working-directory: packages/infra
+        env:
+          TF_VAR_alert_email: ${{ secrets.TF_VAR_ALERT_EMAIL }}
+
+      - name: Terraform Apply
+        run: terraform apply -input=false tfplan
+        working-directory: packages/infra
