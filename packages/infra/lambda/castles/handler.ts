@@ -8,7 +8,7 @@ import {
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ulid } from "ulid";
-import { ddb, TABLE_NAME } from "../shared/dynamodb";
+import { ddb, getTableName } from "../shared/dynamodb";
 import { requireAuth } from "../shared/auth";
 import {
   badRequest,
@@ -48,6 +48,7 @@ function isValidBody(
 }
 
 async function listCastles(): Promise<APIGatewayProxyResultV2> {
+  const TABLE_NAME = getTableName();
   const { Items = [] } = await ddb.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -67,6 +68,7 @@ async function listCastles(): Promise<APIGatewayProxyResultV2> {
 }
 
 async function getCastle(castleId: string): Promise<APIGatewayProxyResultV2> {
+  const TABLE_NAME = getTableName();
   const { Items = [] } = await ddb.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -95,6 +97,7 @@ async function getCastle(castleId: string): Promise<APIGatewayProxyResultV2> {
 async function createCastle(
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
+  const TABLE_NAME = getTableName();
   const body = parseBody(event.body);
   if (!isValidBody(body)) {
     return badRequest("name (string), latitude (number), longitude (number) are required");
@@ -121,6 +124,7 @@ async function updateCastle(
   castleId: string,
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
+  const TABLE_NAME = getTableName();
   const body = parseBody(event.body);
   if (!isValidBody(body)) {
     return badRequest("name (string), latitude (number), longitude (number) are required");
@@ -145,6 +149,7 @@ async function updateCastle(
 async function deleteCastle(
   castleId: string
 ): Promise<APIGatewayProxyResultV2> {
+  const TABLE_NAME = getTableName();
   const { Items = [] } = await ddb.send(
     new QueryCommand({
       TableName: TABLE_NAME,

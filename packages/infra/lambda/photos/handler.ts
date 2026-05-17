@@ -6,8 +6,8 @@ import { DeleteCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ulid } from "ulid";
-import { ddb, TABLE_NAME } from "../shared/dynamodb";
-import { s3Client, PHOTOS_BUCKET_NAME, CLOUDFRONT_DOMAIN } from "../shared/s3";
+import { ddb, getTableName } from "../shared/dynamodb";
+import { s3Client, getPhotosBucketName, getCloudfrontDomain } from "../shared/s3";
 import { requireAuth } from "../shared/auth";
 import {
   badRequest,
@@ -49,6 +49,10 @@ async function addPhoto(
   const photoId = ulid();
   const s3Key = `photos/${castleId}/${photoId}`;
 
+  const PHOTOS_BUCKET_NAME = getPhotosBucketName();
+  const CLOUDFRONT_DOMAIN = getCloudfrontDomain();
+  const TABLE_NAME = getTableName();
+
   // Presigned URL 生成を先に行い、成功後にのみ DynamoDB に書き込む。
   // 逆順だと URL 生成失敗時にオーファンレコードが残る。
   const presignedUrl = await getSignedUrl(
@@ -80,6 +84,9 @@ async function removePhoto(
   castleId: string,
   photoId: string
 ): Promise<APIGatewayProxyResultV2> {
+  const TABLE_NAME = getTableName();
+  const PHOTOS_BUCKET_NAME = getPhotosBucketName();
+
   const { Attributes } = await ddb.send(
     new DeleteCommand({
       TableName: TABLE_NAME,

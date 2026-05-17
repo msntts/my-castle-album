@@ -22,6 +22,7 @@ function App() {
   const { isAuthenticated, error: authError, login, completeMfa, logout, getAccessToken } = useAuth();
   const [castles, setCastles] = useState<Castle[]>([]);
   const [selectedCastle, setSelectedCastle] = useState<Castle | null>(null);
+  const [isLoadingCastle, setIsLoadingCastle] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
 
@@ -63,6 +64,20 @@ function App() {
     setIsAdminMode(true);
   }
 
+  async function handleCastleSelect(castle: Castle) {
+    if (!USE_AWS) {
+      setSelectedCastle(castle);
+      return;
+    }
+    setIsLoadingCastle(true);
+    try {
+      const detail = await repository.findById(castle.castleId);
+      setSelectedCastle(detail ?? castle);
+    } finally {
+      setIsLoadingCastle(false);
+    }
+  }
+
   function handleAdminToggle() {
     if (isAdminMode) {
       if (USE_AWS) logout();
@@ -84,7 +99,7 @@ function App() {
             <CastlePin
               key={castle.castleId}
               castle={castle}
-              onClick={setSelectedCastle}
+              onClick={handleCastleSelect}
               imageStorage={pinImageStorage}
             />
           ))}
@@ -121,7 +136,25 @@ function App() {
             />
           )}
 
-          {selectedCastle && (
+          {isLoadingCastle && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                zIndex: 1000,
+                background: 'white',
+                padding: '16px',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                minWidth: '260px',
+              }}
+            >
+              読み込み中...
+            </div>
+          )}
+
+          {selectedCastle && !isLoadingCastle && (
             <CastleDetail
               castle={selectedCastle}
               isAdminMode={isAdminMode}

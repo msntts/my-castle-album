@@ -10,29 +10,25 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 
-if (!process.env.TABLE_NAME) {
-  throw new Error("TABLE_NAME environment variable is not set");
-}
-if (!process.env.PHOTOS_BUCKET_NAME) {
-  throw new Error("PHOTOS_BUCKET_NAME environment variable is not set");
-}
-
-const TABLE_NAME = process.env.TABLE_NAME;
-const PHOTOS_BUCKET_NAME = process.env.PHOTOS_BUCKET_NAME;
-
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const s3 = new S3Client({});
+
+function getEnv(key: string): string {
+  const val = process.env[key];
+  if (!val) throw new Error(`${key} environment variable is not set`);
+  return val;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Item = Record<string, any>;
 
-async function scanAll(): Promise<Item[]> {
+async function scanAll(tableName: string): Promise<Item[]> {
   const items: Item[] = [];
   let lastKey: Record<string, unknown> | undefined;
   do {
     const { Items = [], LastEvaluatedKey } = await ddb.send(
       new ScanCommand({
-        TableName: TABLE_NAME,
+        TableName: tableName,
         ExclusiveStartKey: lastKey,
       })
     );
@@ -43,7 +39,9 @@ async function scanAll(): Promise<Item[]> {
 }
 
 export const handler = async (): Promise<void> => {
-  const allItems = await scanAll();
+  const TABLE_NAME = getEnv("TABLE_NAME");
+  const PHOTOS_BUCKET_NAME = getEnv("PHOTOS_BUCKET_NAME");
+  const allItems = await scanAll(TABLE_NAME);
 
   const byPK = new Map<string, Item[]>();
   const validS3Keys = new Set<string>();
@@ -62,12 +60,13 @@ export const handler = async (): Promise<void> => {
     }
   }
 
-  await cleanupOrphanedDynamoDBPhotos(byPK);
-  await cleanupOrphanedS3Objects(validS3Keys);
+  await cleanupOrphanedDynamoDBPhotos(byPK, TABLE_NAME);
+  await cleanupOrphanedS3Objects(validS3Keys, PHOTOS_BUCKET_NAME);
 };
 
 async function cleanupOrphanedDynamoDBPhotos(
-  byPK: Map<string, Item[]>
+  byPK: Map<string, Item[]>,
+  tableName: string
 ): Promise<void> {
   for (const [pk, items] of byPK.entries()) {
     if (!pk.startsWith("CASTLE#")) continue;
@@ -83,7 +82,7 @@ async function cleanupOrphanedDynamoDBPhotos(
       const { UnprocessedItems } = await ddb.send(
         new BatchWriteCommand({
           RequestItems: {
-            [TABLE_NAME]: photoItems.slice(i, i + 25).map((item) => ({
+            [tableName]: photoItems.slice(i, i + 25).map((item) => ({
               DeleteRequest: {
                 Key: { PK: item.PK as string, SK: item.SK as string },
               },
@@ -99,7 +98,8 @@ async function cleanupOrphanedDynamoDBPhotos(
 }
 
 async function cleanupOrphanedS3Objects(
-  validS3Keys: Set<string>
+  validS3Keys: Set<string>,
+  bucketName: string
 ): Promise<void> {
   const orphanedKeys: string[] = [];
   let continuationToken: string | undefined;
@@ -107,7 +107,7 @@ async function cleanupOrphanedS3Objects(
   do {
     const response = await s3.send(
       new ListObjectsV2Command({
-        Bucket: PHOTOS_BUCKET_NAME,
+        Bucket: bucketName,
         Prefix: "photos/",
         ContinuationToken: continuationToken,
       })
@@ -131,7 +131,7 @@ async function cleanupOrphanedS3Objects(
   for (let i = 0; i < orphanedKeys.length; i += 1000) {
     await s3.send(
       new DeleteObjectsCommand({
-        Bucket: PHOTOS_BUCKET_NAME,
+        Bucket: bucketName,
         Delete: {
           Objects: orphanedKeys.slice(i, i + 1000).map((key) => ({ Key: key })),
         },
