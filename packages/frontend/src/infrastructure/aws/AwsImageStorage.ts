@@ -3,7 +3,8 @@ import type { PhotoId } from '../../domain/ids';
 import type { ImageStorage } from '../../domain/photo/ImageStorage';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
-const CLOUDFRONT = (import.meta.env.VITE_CLOUDFRONT_DOMAIN as string | undefined) ?? '';
+const cfDomain = (import.meta.env.VITE_CLOUDFRONT_DOMAIN as string | undefined) ?? '';
+const CLOUDFRONT = cfDomain && !cfDomain.startsWith('http') ? `https://${cfDomain}` : cfDomain;
 
 export class AwsImageStorage implements ImageStorage {
   // photoId → imageUrl（同一セッション内のアップロードURLを高速返却するキャッシュ）
