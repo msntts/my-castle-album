@@ -8,6 +8,7 @@ interface CastleDetailProps {
   isAdminMode: boolean;
   onClose: () => void;
   onCastleUpdated: (castle: Castle) => void;
+  onDelete?: () => void;
   imageStorage: ImageStorage;
   castleRepository?: CastleRepository;
 }
@@ -17,9 +18,16 @@ export function CastleDetail({
   isAdminMode,
   onClose,
   onCastleUpdated,
+  onDelete,
   imageStorage,
   castleRepository,
 }: CastleDetailProps) {
+  function handleDelete() {
+    if (window.confirm(`「${castle.name}」を削除しますか？`)) {
+      onDelete?.();
+    }
+  }
+
   return (
     <div
       style={{
@@ -52,6 +60,24 @@ export function CastleDetail({
         imageStorage={imageStorage}
         castleRepository={castleRepository}
       />
+      {isAdminMode && (
+        <button
+          onClick={handleDelete}
+          style={{
+            marginTop: '12px',
+            width: '100%',
+            padding: '6px',
+            border: '1px solid #c0392b',
+            borderRadius: '4px',
+            background: 'none',
+            color: '#c0392b',
+            cursor: 'pointer',
+            fontSize: '0.85em',
+          }}
+        >
+          このピンを削除
+        </button>
+      )}
     </div>
   );
 }

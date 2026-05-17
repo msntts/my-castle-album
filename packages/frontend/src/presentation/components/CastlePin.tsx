@@ -21,9 +21,11 @@ interface CastlePinProps {
   castle: Castle;
   onClick?: (castle: Castle) => void;
   imageStorage: ImageStorage;
+  draggable?: boolean;
+  onPositionChange?: (lat: number, lng: number) => void;
 }
 
-export function CastlePin({ castle, onClick, imageStorage }: CastlePinProps) {
+export function CastlePin({ castle, onClick, imageStorage, draggable, onPositionChange }: CastlePinProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>();
 
   useEffect(() => {
@@ -45,8 +47,13 @@ export function CastlePin({ castle, onClick, imageStorage }: CastlePinProps) {
   return (
     <Marker
       position={position}
+      draggable={draggable}
       eventHandlers={{
         click: () => onClick?.(castle),
+        dragend: (e) => {
+          const { lat, lng } = (e.target as L.Marker).getLatLng();
+          onPositionChange?.(lat, lng);
+        },
       }}
     >
       <Tooltip>

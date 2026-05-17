@@ -108,6 +108,20 @@ function App() {
               castle={castle}
               onClick={handleCastleSelect}
               imageStorage={getPinImageStorage(castle.castleId)}
+              draggable={isAdminMode}
+              onPositionChange={async (lat, lng) => {
+                const updated: Castle = {
+                  ...castle,
+                  location: { latitude: lat, longitude: lng },
+                };
+                await repository.save(updated);
+                setCastles((prev) =>
+                  prev.map((c) => (c.castleId === castle.castleId ? updated : c))
+                );
+                if (selectedCastle?.castleId === castle.castleId) {
+                  setSelectedCastle(updated);
+                }
+              }}
             />
           ))}
         </CastleMap>
@@ -171,6 +185,11 @@ function App() {
                   prev.map((c) => (c.castleId === updated.castleId ? updated : c))
                 );
                 setSelectedCastle(updated);
+              }}
+              onDelete={async () => {
+                await repository.delete(selectedCastle.castleId);
+                setCastles((prev) => prev.filter((c) => c.castleId !== selectedCastle.castleId));
+                setSelectedCastle(null);
               }}
               imageStorage={imageStorage}
               castleRepository={repository}
