@@ -21,7 +21,7 @@ resource "aws_cognito_user_pool" "main" {
   #   4. この値を "ON" に変更して terraform apply（MFA 必須化）
   # 手順③④を逆にすると管理者がサインインできなくなる。
   # ロールバック: AWS Console で User Pool MFA を Optional に一時変更 → TOTP 設定後に再 apply
-  mfa_configuration = "OPTIONAL"
+  mfa_configuration = "ON"
 
   software_token_mfa_configuration {
     enabled = true
