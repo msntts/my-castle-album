@@ -80,7 +80,13 @@ export function PhotoGallery({
     if (failCount > 0) alert(`${failCount} 枚のアップロードに失敗しました。`);
 
     if (newPhotos.length > 0) {
-      const updatedPhotos = [...photos, ...newPhotos];
+      const merged = [...photos];
+      for (const np of newPhotos) {
+        const idx = merged.findIndex((p) => p.photoId === np.photoId);
+        if (idx >= 0) merged[idx] = np;
+        else merged.push(np);
+      }
+      const updatedPhotos = merged;
       if (castleRepository) {
         const castle = await castleRepository.findById(castleId);
         if (castle) await castleRepository.save({ ...castle, photos: updatedPhotos });

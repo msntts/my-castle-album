@@ -29,7 +29,7 @@ async function addPhoto(
   castleId: string,
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
-  let body: { contentType?: unknown; caption?: unknown };
+  let body: { contentType?: unknown; caption?: unknown; fileName?: unknown };
   try {
     body = JSON.parse(event.body ?? "{}") as typeof body;
   } catch {
@@ -46,7 +46,13 @@ async function addPhoto(
       ? body.caption.trim()
       : undefined;
 
-  const photoId = ulid();
+  const rawFileName = typeof body.fileName === "string" && body.fileName.trim() !== ""
+    ? body.fileName.trim()
+    : null;
+  if (rawFileName !== null && rawFileName.length > 255) {
+    return badRequest("fileName must be 255 characters or fewer");
+  }
+  const photoId = rawFileName ? encodeURIComponent(rawFileName) : ulid();
   const s3Key = `photos/${castleId}/${photoId}`;
 
   const PHOTOS_BUCKET_NAME = getPhotosBucketName();

@@ -26,7 +26,7 @@ export class AwsImageStorage implements ImageStorage {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ contentType: file.type }),
+      body: JSON.stringify({ contentType: file.type, fileName: file.name }),
     });
     if (!res.ok) throw new Error(`POST /photos failed: ${res.status}`);
 
