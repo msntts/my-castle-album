@@ -1,5 +1,5 @@
 terraform {
-  required_version = "~> 1.9"
+  required_version = "~> 1.10"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -16,17 +16,13 @@ terraform {
   #     --versioning-configuration Status=Enabled
   #   aws s3api put-public-access-block --bucket my-castle-album-tfstate \
   #     --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-  #   aws dynamodb create-table --table-name my-castle-album-tfstate-lock \
-  #     --attribute-definitions AttributeName=LockID,AttributeType=S \
-  #     --key-schema AttributeName=LockID,KeyType=HASH \
-  #     --billing-mode PAY_PER_REQUEST --region ap-northeast-1
   # 移行: terraform init -migrate-state
   backend "s3" {
-    bucket         = "my-castle-album-tfstate"
-    key            = "infra/terraform.tfstate"
-    region         = "ap-northeast-1"
-    dynamodb_table = "my-castle-album-tfstate-lock"
-    encrypt        = true
+    bucket       = "my-castle-album-tfstate"
+    key          = "infra/terraform.tfstate"
+    region       = "ap-northeast-1"
+    use_lockfile = true
+    encrypt      = true
   }
 }
 
