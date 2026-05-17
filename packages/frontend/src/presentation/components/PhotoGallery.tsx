@@ -26,17 +26,13 @@ export function PhotoGallery({
   castleRepository,
 }: PhotoGalleryProps) {
   const [urls, setUrls] = useState<Record<string, string>>({});
-  const [loadingPhotoIds, setLoadingPhotoIds] = useState<Set<string>>(new Set());
+  const [loadedPhotoIds, setLoadedPhotoIds] = useState<Set<string>>(new Set());
   const [isUploading, setIsUploading] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const newIds = photos.map((p) => p.photoId).filter((id) => !urls[id]);
-    if (newIds.length > 0) {
-      setLoadingPhotoIds((prev) => new Set([...prev, ...newIds]));
-    }
     Promise.all(
       photos.map(async (photo) => {
         const url = await imageStorage.getUrl(photo.photoId);
@@ -49,14 +45,8 @@ export function PhotoGallery({
         if (url) map[id] = url;
       }
       setUrls((prev) => ({ ...prev, ...map }));
-      setLoadingPhotoIds((prev) => {
-        const next = new Set(prev);
-        for (const [id] of entries) next.delete(id);
-        return next;
-      });
     });
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photos, imageStorage]);
 
   const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
@@ -147,24 +137,34 @@ export function PhotoGallery({
           {photos.map((photo, index) => (
             <div key={photo.photoId} style={{ position: 'relative' }}>
               <div
-                onClick={() => !isAdminMode && setLightboxIndex(index)}
-                style={{ cursor: isAdminMode ? 'default' : 'pointer' }}
+                onClick={() => !isAdminMode && loadedPhotoIds.has(photo.photoId) && setLightboxIndex(index)}
+                style={{ cursor: isAdminMode || !loadedPhotoIds.has(photo.photoId) ? 'default' : 'pointer', position: 'relative', width: '100%', aspectRatio: '1' }}
               >
-                {urls[photo.photoId] ? (
+                {urls[photo.photoId] && (
                   <img
                     src={urls[photo.photoId]}
                     alt={photo.caption ?? ''}
-                    style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: '3px', display: 'block' }}
+                    onLoad={() => setLoadedPhotoIds((prev) => new Set([...prev, photo.photoId]))}
+                    style={{
+                      position: 'absolute', inset: 0,
+                      width: '100%', height: '100%', objectFit: 'cover', borderRadius: '3px', display: 'block',
+                      opacity: loadedPhotoIds.has(photo.photoId) ? 1 : 0,
+                    }}
                   />
-                ) : (
+                )}
+                {!loadedPhotoIds.has(photo.photoId) && (
                   <div style={{
-                    width: '100%', aspectRatio: '1', borderRadius: '3px',
-                    background: loadingPhotoIds.has(photo.photoId)
-                      ? 'linear-gradient(90deg, #eee 25%, #ddd 50%, #eee 75%)'
-                      : '#eee',
-                    backgroundSize: loadingPhotoIds.has(photo.photoId) ? '200% 100%' : undefined,
-                    animation: loadingPhotoIds.has(photo.photoId) ? 'shimmer 1.2s infinite' : undefined,
-                  }} />
+                    position: 'absolute', inset: 0,
+                    background: '#f0f0f0', borderRadius: '3px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <div style={{
+                      width: '20px', height: '20px',
+                      border: '2px solid #ddd', borderTopColor: '#999',
+                      borderRadius: '50%',
+                      animation: 'spin 0.8s linear infinite',
+                    }} />
+                  </div>
                 )}
               </div>
               {isAdminMode && (
