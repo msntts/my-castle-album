@@ -100,8 +100,8 @@ resource "aws_iam_role_policy" "github_terraform" {
       },
       {
         # IAM: Terraform が管理するアプリケーションロールのみ（my-castle-album-* 命名に限定）
-        # github-actions-* ロール自身は対象外（自己昇格リスク回避）
-        # CI/CD ロールの初回作成は手動 bootstrap で行う
+        # github-actions-* ロールへの書き込みは禁止（自己昇格リスク回避）
+        # CI/CD ロールの初回作成・ポリシー変更は手動 bootstrap で行う
         # TODO: PutRolePolicy による inline policy 書き込みには Resource 制限が効かない。
         # 本番環境化の際は iam:CreateRole に iam:PermissionsBoundary 条件を追加して
         # Permission Boundary 付与を強制すること（権限昇格チェーン防止）
@@ -114,6 +114,19 @@ resource "aws_iam_role_policy" "github_terraform" {
           "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies",
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/my-castle-album-*"
+      },
+      {
+        # IAM 読み取り: github-actions-* ロール自身の状態を terraform plan で読むために必要
+        # 書き込みは上のブロックで my-castle-album-* に限定しているため自己昇格リスクなし
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRoleTags",
+        ]
+        Resource = "arn:aws:iam::${var.account_id}:role/github-actions-*"
       },
       {
         # AttachRolePolicy: AWSLambdaBasicExecutionRole のみ許可（権限昇格防止）
