@@ -99,25 +99,6 @@ make create-admin USERNAME=your@email.com PASSWORD=xxxxxx
 内部で `admin-create-user` → `admin-set-user-password --permanent` の順に実行される。
 フロントエンドが Cognito の `NEW_PASSWORD_REQUIRED` チャレンジに未対応のため、恒久パスワードへの昇格が必須。
 
-### Step 5a: 管理者としてサインインする
-
-**URL**: `https://<terraform output cloudfront_domain>` をブラウザで開く。
-
-```
-terraform output cloudfront_domain
-```
-
-1. 画面左上の **「管理モードへ」** ボタンをクリック
-2. Step 5 で指定したメールアドレスとパスワードでサインイン
-3. MFA が OPTIONAL の場合はそのままログイン完了
-
-> **注意**: MFA 必須化が完了するまでパスワードのみでサインイン可能な状態になる。この期間中はサイトを外部公開しないこと。
->
-> MFA 設定手順:
-> 1. 上記でサインインした状態で TOTP 登録（Google Authenticator 等）
-> 2. `packages/infra/modules/auth/main.tf` の `mfa_configuration = "OPTIONAL"` を `"ON"` に変更
-> 3. `make tf-plan && make tf-apply` を再実行 → MFA 必須化
-
 ### Step 6: GitHub Secrets 設定
 
 ```
@@ -133,6 +114,24 @@ git push -u origin main
 gh run list --limit 5
 gh run watch
 ```
+
+### Step 8: 管理者としてサインインする
+
+デプロイ完了後、CloudFront URL をブラウザで開く。
+
+```
+terraform output cloudfront_domain
+```
+
+1. 画面左上の **「管理モードへ」** ボタンをクリック
+2. Step 5 で指定したメールアドレスとパスワードでサインイン
+
+> **注意**: MFA 必須化が完了するまでパスワードのみでサインイン可能な状態になる。この期間中はサイトを外部公開しないこと。
+>
+> MFA 設定手順:
+> 1. 上記でサインインした状態で TOTP 登録（Google Authenticator 等）
+> 2. `packages/infra/modules/auth/main.tf` の `mfa_configuration = "OPTIONAL"` を `"ON"` に変更
+> 3. `make tf-plan && make tf-apply` を再実行 → MFA 必須化
 
 ---
 
