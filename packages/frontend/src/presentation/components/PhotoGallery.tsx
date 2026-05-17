@@ -59,18 +59,34 @@ export function PhotoGallery({
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
-    const newPhotos: Photo[] = await Promise.all(
-      files.map(async (file) => {
-        const photoId = await imageStorage.save(file);
-        return { photoId, castleId } satisfies Photo;
-      })
-    );
-    const updatedPhotos = [...photos, ...newPhotos];
-    if (castleRepository) {
-      const castle = await castleRepository.findById(castleId);
-      if (castle) await castleRepository.save({ ...castle, photos: updatedPhotos });
+
+    const CONCURRENCY = 3;
+    const settled: PromiseSettledResult<Photo>[] = [];
+    for (let i = 0; i < files.length; i += CONCURRENCY) {
+      const chunk = files.slice(i, i + CONCURRENCY);
+      const chunkResults = await Promise.allSettled(
+        chunk.map(async (file) => {
+          const photoId = await imageStorage.save(file);
+          return { photoId, castleId } satisfies Photo;
+        }),
+      );
+      settled.push(...chunkResults);
     }
-    onPhotosChanged(updatedPhotos);
+
+    const newPhotos = settled
+      .filter((r): r is PromiseFulfilledResult<Photo> => r.status === 'fulfilled')
+      .map((r) => r.value);
+    const failCount = settled.filter((r) => r.status === 'rejected').length;
+    if (failCount > 0) alert(`${failCount} 枚のアップロードに失敗しました。`);
+
+    if (newPhotos.length > 0) {
+      const updatedPhotos = [...photos, ...newPhotos];
+      if (castleRepository) {
+        const castle = await castleRepository.findById(castleId);
+        if (castle) await castleRepository.save({ ...castle, photos: updatedPhotos });
+      }
+      onPhotosChanged(updatedPhotos);
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
