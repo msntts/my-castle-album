@@ -50,7 +50,7 @@
 
 | メソッド | シグネチャ | 説明 |
 |---------|-----------|------|
-| 保存 | `save(photoId, file)` | 画像ファイルを保存する |
+| 保存 | `save(file): Promise<PhotoId>` | 画像ファイルを保存し、確定したphotoIdを返す |
 | URL取得 | `getUrl(photoId)` | 画像の表示用URLを返す（Base64 data URL または S3 URL） |
 | 削除 | `delete(photoId)` | 画像を削除する |
 

@@ -17,9 +17,11 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export class LocalStorageImageStorage implements ImageStorage {
-  async save(photoId: PhotoId, file: File): Promise<void> {
+  async save(file: File): Promise<PhotoId> {
+    const photoId = `photo-${Date.now()}-${Math.random().toString(36).slice(2)}` as PhotoId;
     const dataUrl = await fileToBase64(file);
     localStorage.setItem(storageKey(photoId), dataUrl);
+    return photoId;
   }
 
   async getUrl(photoId: PhotoId): Promise<string | undefined> {

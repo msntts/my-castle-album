@@ -61,8 +61,7 @@ export function PhotoGallery({
     }
     const newPhotos: Photo[] = await Promise.all(
       files.map(async (file) => {
-        const photoId = `photo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        await imageStorage.save(photoId, file);
+        const photoId = await imageStorage.save(file);
         return { photoId, castleId } satisfies Photo;
       })
     );
