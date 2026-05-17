@@ -24,6 +24,7 @@ packages/infra/.terraform/
 packages/infra/terraform.tfstate
 packages/infra/terraform.tfstate.backup
 packages/infra/*.tfvars
+packages/infra/tfplan
 # .terraform.lock.hcl はコミット対象（provider バージョン固定・サプライチェーン攻撃防止）
 
 # Lambda build output
