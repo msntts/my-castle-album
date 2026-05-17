@@ -7,7 +7,7 @@ BUCKET      := my-castle-album-tfstate
 LOCK_TABLE  := my-castle-album-tfstate-lock
 REGION      := ap-northeast-1
 
-.PHONY: init-backend lambda-build tf-init tf-plan tf-apply tf-import-cicd set-secrets create-admin deploy-frontend destroy destroy-backend delete-secrets
+.PHONY: init-backend lambda-build tf-init tf-plan tf-apply tf-import-cicd set-secrets create-admin setup-mfa deploy-frontend destroy destroy-backend delete-secrets
 
 init-backend:
 	aws s3api create-bucket --bucket $(BUCKET) --region $(REGION) --create-bucket-configuration LocationConstraint=$(REGION)
@@ -62,6 +62,30 @@ create-admin:
 	pool_id=$$(terraform output -raw cognito_user_pool_id)
 	aws cognito-idp admin-create-user --user-pool-id "$$pool_id" --username "$(USERNAME)" --temporary-password "$(PASSWORD)" --message-action SUPPRESS
 	aws cognito-idp admin-set-user-password --user-pool-id "$$pool_id" --username "$(USERNAME)" --password "$(PASSWORD)" --permanent
+
+setup-mfa:
+	@[ -n "$(USERNAME)" ] || { echo "Usage: make setup-mfa USERNAME=your@email.com"; exit 1; }
+	read -s -p "Password: " password; echo ""
+	client_id=$$(terraform output -raw cognito_user_pool_client_id)
+	access_token=$$(aws cognito-idp initiate-auth \
+	  --auth-flow USER_PASSWORD_AUTH \
+	  --client-id "$$client_id" \
+	  --auth-parameters "USERNAME=$(USERNAME),PASSWORD=$$password" \
+	  --query 'AuthenticationResult.AccessToken' --output text)
+	secret_code=$$(aws cognito-idp associate-software-token \
+	  --access-token "$$access_token" \
+	  --query 'SecretCode' --output text)
+	echo ""
+	echo "====================================================="
+	echo "SecretCode: $$secret_code"
+	echo "====================================================="
+	echo "Google Authenticator → セットアップキーを入力 → 上記 SecretCode を手動入力"
+	echo ""
+	read -p "登録後に表示される 6 桁コードを入力: " totp_code
+	aws cognito-idp verify-software-token \
+	  --access-token "$$access_token" \
+	  --user-code "$$totp_code"
+	echo "TOTP 登録完了。mfa_configuration を ON に変更して make tf-plan && make tf-apply を実行してください。"
 
 deploy-frontend:
 	bucket=$$(terraform output -raw spa_bucket_name)
