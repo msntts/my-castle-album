@@ -9,11 +9,12 @@ export class AwsImageStorage implements ImageStorage {
   // フロントエンド生成 photoId → { serverPhotoId, imageUrl }
   // 同一セッション内のアップロードを正しくデリートできるよう追跡する
   private readonly uploadCache = new Map<PhotoId, { serverPhotoId: PhotoId; imageUrl: string }>();
-
-  constructor(
-    private readonly castleId: CastleId,
-    private readonly getAccessToken: () => string | null,
-  ) {}
+  private readonly castleId: CastleId;
+  private readonly getAccessToken: () => string | null;
+  constructor(castleId: CastleId, getAccessToken: () => string | null) {
+    this.castleId = castleId;
+    this.getAccessToken = getAccessToken;
+  }
 
   async save(_photoId: PhotoId, file: File): Promise<void> {
     const token = this.getAccessToken();

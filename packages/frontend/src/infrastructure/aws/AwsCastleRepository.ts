@@ -12,7 +12,10 @@ interface CastleApiItem {
 }
 
 export class AwsCastleRepository implements CastleRepository {
-  constructor(private readonly getAccessToken: () => string | null) {}
+  private readonly getAccessToken: () => string | null;
+  constructor(getAccessToken: () => string | null) {
+    this.getAccessToken = getAccessToken;
+  }
 
   async findAll(): Promise<Castle[]> {
     const res = await fetch(`${API_BASE}/castles`);
