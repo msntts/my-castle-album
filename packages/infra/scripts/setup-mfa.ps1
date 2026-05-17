@@ -21,13 +21,15 @@ $env:AWS_ACCESS_KEY_ID     = $roleCreds.roleCredentials.accessKeyId
 $env:AWS_SECRET_ACCESS_KEY = $roleCreds.roleCredentials.secretAccessKey
 $env:AWS_SESSION_TOKEN     = $roleCreds.roleCredentials.sessionToken
 
-$clientId = terraform output -raw cognito_user_pool_client_id
+$clientId = terraform output -raw cognito_admin_tools_client_id
+$poolId   = terraform output -raw cognito_user_pool_id
 
 # Step 1: パスワード認証してアクセストークンを取得
 Write-Host "認証中..."
-$authResult = aws cognito-idp initiate-auth `
-    --auth-flow USER_PASSWORD_AUTH `
+$authResult = aws cognito-idp admin-initiate-auth `
+    --user-pool-id $poolId `
     --client-id $clientId `
+    --auth-flow ADMIN_USER_PASSWORD_AUTH `
     --auth-parameters "USERNAME=$Username,PASSWORD=$Password" | ConvertFrom-Json
 $accessToken = $authResult.AuthenticationResult.AccessToken
 if (-not $accessToken) {

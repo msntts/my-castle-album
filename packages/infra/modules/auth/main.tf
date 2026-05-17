@@ -36,6 +36,30 @@ resource "aws_cognito_user_pool" "main" {
   }
 }
 
+# 管理ツール（setup-mfa 等）専用クライアント。ADMIN_USER_PASSWORD_AUTH を SPA クライアントから分離する。
+resource "aws_cognito_user_pool_client" "admin_tools" {
+  name         = "admin-tools"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  explicit_auth_flows = [
+    "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+  ]
+
+  generate_secret               = false
+  prevent_user_existence_errors = "ENABLED"
+
+  access_token_validity  = 60
+  refresh_token_validity = 1
+  id_token_validity      = 60
+
+  token_validity_units {
+    access_token  = "minutes"
+    refresh_token = "days"
+    id_token      = "minutes"
+  }
+}
+
 resource "aws_cognito_user_pool_client" "spa" {
   name         = "frontend-spa"
   user_pool_id = aws_cognito_user_pool.main.id

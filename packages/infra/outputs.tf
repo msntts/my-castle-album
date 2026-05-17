@@ -47,6 +47,11 @@ output "cognito_user_pool_client_id" {
   value       = module.auth.user_pool_client_id
 }
 
+output "cognito_admin_tools_client_id" {
+  description = "Cognito 管理ツール専用クライアント ID（setup-mfa スクリプトで使用）"
+  value       = module.auth.admin_tools_client_id
+}
+
 output "github_terraform_role_arn" {
   description = "GitHub Actions Terraform ロール ARN（GitHub Secrets: AWS_TERRAFORM_ROLE_ARN）"
   value       = module.cicd.terraform_role_arn

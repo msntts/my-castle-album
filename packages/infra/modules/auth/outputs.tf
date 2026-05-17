@@ -6,6 +6,10 @@ output "user_pool_client_id" {
   value = aws_cognito_user_pool_client.spa.id
 }
 
+output "admin_tools_client_id" {
+  value = aws_cognito_user_pool_client.admin_tools.id
+}
+
 output "issuer_url" {
   description = "JWT Authorizer の issuer URL"
   value       = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.main.id}"

@@ -66,10 +66,12 @@ create-admin:
 setup-mfa:
 	@[ -n "$(USERNAME)" ] || { echo "Usage: make setup-mfa USERNAME=your@email.com"; exit 1; }
 	read -s -p "Password: " password; echo ""
-	client_id=$$(terraform output -raw cognito_user_pool_client_id)
-	access_token=$$(aws cognito-idp initiate-auth \
-	  --auth-flow USER_PASSWORD_AUTH \
+	client_id=$$(terraform output -raw cognito_admin_tools_client_id)
+	pool_id=$$(terraform output -raw cognito_user_pool_id)
+	access_token=$$(aws cognito-idp admin-initiate-auth \
+	  --user-pool-id "$$pool_id" \
 	  --client-id "$$client_id" \
+	  --auth-flow ADMIN_USER_PASSWORD_AUTH \
 	  --auth-parameters "USERNAME=$(USERNAME),PASSWORD=$$password" \
 	  --query 'AuthenticationResult.AccessToken' --output text)
 	secret_code=$$(aws cognito-idp associate-software-token \
