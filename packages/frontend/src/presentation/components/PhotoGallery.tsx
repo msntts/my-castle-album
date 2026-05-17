@@ -47,15 +47,15 @@ export function PhotoGallery({
     return () => { cancelled = true; };
   }, [photos, imageStorage]);
 
-  const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
-  const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
+  const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+  const MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
     const invalid = files.find((f) => !ALLOWED_TYPES.has(f.type) || f.size > MAX_SIZE_BYTES);
     if (invalid) {
-      alert('JPEG / PNG / WebP / HEIC のみ、20MB 以下のファイルをアップロードしてください。');
+      alert('JPEG / PNG / WebP / GIF のみ、50MB 以下のファイルをアップロードしてください。');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -180,7 +180,7 @@ export function PhotoGallery({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             multiple
             style={{ display: 'none' }}
             onChange={handleFileChange}

@@ -22,7 +22,7 @@ const ALLOWED_CONTENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/heic",
+  "image/gif",
 ]);
 
 async function addPhoto(
@@ -38,7 +38,7 @@ async function addPhoto(
 
   const contentType = body.contentType;
   if (typeof contentType !== "string" || !ALLOWED_CONTENT_TYPES.has(contentType)) {
-    return badRequest("contentType must be image/jpeg, image/png, image/webp, or image/heic");
+    return badRequest("contentType must be image/jpeg, image/png, image/webp, or image/gif");
   }
 
   const caption =
