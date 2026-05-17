@@ -4,7 +4,7 @@ import {
   CognitoUser,
   CognitoUserSession,
 } from 'amazon-cognito-identity-js';
-import { userPool } from '../../infrastructure/aws/cognitoAuth';
+import { getUserPool } from '../../infrastructure/aws/cognitoAuth';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -20,7 +20,7 @@ export function useAuth() {
 
   // セッション復元（getSession は非同期のため useEffect で処理）
   useEffect(() => {
-    const user = userPool.getCurrentUser();
+    const user = getUserPool().getCurrentUser();
     if (!user) return;
     user.getSession((err: Error | null, session: CognitoUserSession | null) => {
       if (!err && session?.isValid()) {
@@ -37,7 +37,7 @@ export function useAuth() {
       return new Promise((resolve, reject) => {
         const cognitoUser = new CognitoUser({
           Username: email,
-          Pool: userPool,
+          Pool: getUserPool(),
           Storage: window.sessionStorage,
         });
 
@@ -99,7 +99,7 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(() => {
-    const user = userPool.getCurrentUser();
+    const user = getUserPool().getCurrentUser();
     if (user) {
       // globalSignOut でサーバー側のトークンも失効させる
       user.globalSignOut({
