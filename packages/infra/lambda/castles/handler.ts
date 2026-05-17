@@ -24,6 +24,7 @@ interface CastleInput {
   name: unknown;
   latitude: unknown;
   longitude: unknown;
+  thumbnailPhotoId?: unknown;
 }
 
 function parseBody(raw: string | undefined): CastleInput {
@@ -63,6 +64,7 @@ async function listCastles(): Promise<APIGatewayProxyResultV2> {
       name: item.name as string,
       latitude: item.latitude as number,
       longitude: item.longitude as number,
+      thumbnailPhotoId: item.thumbnailPhotoId as string | undefined,
     }))
   );
 }
@@ -90,6 +92,7 @@ async function getCastle(castleId: string): Promise<APIGatewayProxyResultV2> {
     name: metadata.name as string,
     latitude: metadata.latitude as number,
     longitude: metadata.longitude as number,
+    thumbnailPhotoId: metadata.thumbnailPhotoId as string | undefined,
     photos,
   });
 }
@@ -129,21 +132,22 @@ async function updateCastle(
   if (!isValidBody(body)) {
     return badRequest("name (string), latitude (number), longitude (number) are required");
   }
-  await ddb.send(
-    new PutCommand({
-      TableName: TABLE_NAME,
-      Item: {
-        PK: `CASTLE#${castleId}`,
-        SK: "METADATA",
-        name: body.name,
-        latitude: body.latitude,
-        longitude: body.longitude,
-        GSI1PK: "ALL_CASTLES",
-        GSI1SK: `CASTLE#${castleId}`,
-      },
-    })
-  );
-  return ok({ castleId, name: body.name, latitude: body.latitude, longitude: body.longitude });
+  const thumbnailPhotoId =
+    typeof body.thumbnailPhotoId === "string" && /^[0-9A-Z]{26}$/.test(body.thumbnailPhotoId)
+      ? body.thumbnailPhotoId
+      : undefined;
+  const item: Record<string, unknown> = {
+    PK: `CASTLE#${castleId}`,
+    SK: "METADATA",
+    name: body.name,
+    latitude: body.latitude,
+    longitude: body.longitude,
+    GSI1PK: "ALL_CASTLES",
+    GSI1SK: `CASTLE#${castleId}`,
+  };
+  if (thumbnailPhotoId !== undefined) item.thumbnailPhotoId = thumbnailPhotoId;
+  await ddb.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+  return ok({ castleId, name: body.name, latitude: body.latitude, longitude: body.longitude, thumbnailPhotoId });
 }
 
 async function deleteCastle(

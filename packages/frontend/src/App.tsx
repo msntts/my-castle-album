@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Castle } from './domain/castle/Castle';
 import type { CastleRepository } from './domain/castle/CastleRepository';
 import type { ImageStorage } from './domain/photo/ImageStorage';
@@ -36,8 +36,15 @@ function App() {
     return new AwsImageStorage(selectedCastle.castleId, getAccessToken);
   }, [selectedCastle, getAccessToken]);
 
-  // ピンのホバーサムネイル用。LocalStorage のみで十分（AWS モードでもピン表示は localStorage から）
-  const pinImageStorage: ImageStorage = useMemo(() => new LocalStorageImageStorage(), []);
+  const localPinImageStorage: ImageStorage = useMemo(() => new LocalStorageImageStorage(), []);
+  const awsPinStorageMap = useRef<Map<string, AwsImageStorage>>(new Map());
+  const getPinImageStorage = useCallback((castleId: string): ImageStorage => {
+    if (!USE_AWS) return localPinImageStorage;
+    if (!awsPinStorageMap.current.has(castleId)) {
+      awsPinStorageMap.current.set(castleId, new AwsImageStorage(castleId, getAccessToken));
+    }
+    return awsPinStorageMap.current.get(castleId)!;
+  }, [getAccessToken, localPinImageStorage]);
 
   useEffect(() => {
     const load = async () => {
@@ -100,7 +107,7 @@ function App() {
               key={castle.castleId}
               castle={castle}
               onClick={handleCastleSelect}
-              imageStorage={pinImageStorage}
+              imageStorage={getPinImageStorage(castle.castleId)}
             />
           ))}
         </CastleMap>
@@ -166,7 +173,7 @@ function App() {
                 setSelectedCastle(updated);
               }}
               imageStorage={imageStorage}
-              castleRepository={USE_AWS ? undefined : repository}
+              castleRepository={repository}
             />
           )}
 

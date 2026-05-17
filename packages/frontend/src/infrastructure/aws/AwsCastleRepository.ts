@@ -8,6 +8,7 @@ interface CastleApiItem {
   name: string;
   latitude: number;
   longitude: number;
+  thumbnailPhotoId?: string;
   photos?: Array<{ photoId: string; castleId: string; caption?: string }>;
 }
 
@@ -26,6 +27,7 @@ export class AwsCastleRepository implements CastleRepository {
       name: item.name,
       location: { latitude: item.latitude, longitude: item.longitude },
       photos: [],
+      thumbnailPhotoId: item.thumbnailPhotoId,
     }));
   }
 
@@ -38,6 +40,7 @@ export class AwsCastleRepository implements CastleRepository {
       castleId: item.castleId,
       name: item.name,
       location: { latitude: item.latitude, longitude: item.longitude },
+      thumbnailPhotoId: item.thumbnailPhotoId,
       photos: (item.photos ?? []).map((p) => ({
         photoId: p.photoId,
         castleId: p.castleId,
@@ -58,6 +61,7 @@ export class AwsCastleRepository implements CastleRepository {
         name: castle.name,
         latitude: castle.location.latitude,
         longitude: castle.location.longitude,
+        ...(castle.thumbnailPhotoId !== undefined ? { thumbnailPhotoId: castle.thumbnailPhotoId } : {}),
       }),
     });
     if (!res.ok) throw new Error(`PUT /castles/${castle.castleId} failed: ${res.status}`);
