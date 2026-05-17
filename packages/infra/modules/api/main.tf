@@ -53,6 +53,7 @@ resource "aws_iam_role_policy" "castles_dynamodb" {
         "dynamodb:GetItem",
         "dynamodb:PutItem",
         "dynamodb:DeleteItem",
+        "dynamodb:BatchWriteItem",
         "dynamodb:Query",
       ]
       Resource = [
