@@ -73,6 +73,12 @@ resource "aws_iam_role_policy" "github_terraform" {
         Resource = "*"
       },
       {
+        # CloudWatch Metric Alarms: このプロジェクトのアラームのみ
+        Effect = "Allow"
+        Action = ["cloudwatch:*"]
+        Resource = "arn:aws:cloudwatch:${var.region}:${var.account_id}:alarm:my-castle-album-*"
+      },
+      {
         # SNS: このプロジェクトのトピックのみ
         Effect   = "Allow"
         Action   = ["sns:*"]

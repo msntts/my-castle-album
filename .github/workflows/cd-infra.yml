@@ -52,12 +52,17 @@ jobs:
         run: terraform init
         working-directory: packages/infra
 
+      - name: Prepare Terraform variables
+        run: |
+          origin="${{ secrets.VITE_CLOUDFRONT_DOMAIN }}"
+          [[ "$origin" == https://* ]] || origin="https://${origin}"
+          echo "TF_VAR_frontend_origin=$origin" >> "$GITHUB_ENV"
+
       - name: Terraform Plan
         run: terraform plan -input=false -out=tfplan
         working-directory: packages/infra
         env:
           TF_VAR_alert_email: ${{ secrets.TF_VAR_ALERT_EMAIL }}
-          TF_VAR_frontend_origin: ${{ secrets.VITE_CLOUDFRONT_DOMAIN }}
 
       - name: Terraform Apply
         run: terraform apply -input=false tfplan
