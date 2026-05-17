@@ -8,7 +8,9 @@ interface PhotoGalleryProps {
   photos: Photo[];
   castleId: CastleId;
   isAdminMode: boolean;
+  thumbnailPhotoId?: string;
   onPhotosChanged: (photos: Photo[]) => void;
+  onThumbnailChanged?: (photoId: string) => void;
   imageStorage: ImageStorage;
   castleRepository?: CastleRepository;
 }
@@ -17,7 +19,9 @@ export function PhotoGallery({
   photos,
   castleId,
   isAdminMode,
+  thumbnailPhotoId,
   onPhotosChanged,
+  onThumbnailChanged,
   imageStorage,
   castleRepository,
 }: PhotoGalleryProps) {
@@ -71,6 +75,15 @@ export function PhotoGallery({
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
+  async function handleSetThumbnail(photoId: string) {
+    if (castleRepository) {
+      const castle = await castleRepository.findById(castleId);
+      if (castle) await castleRepository.save({ ...castle, thumbnailPhotoId: photoId });
+    }
+    onThumbnailChanged?.(photoId);
+  }
+
+
   async function handleDelete(photoId: string) {
     await imageStorage.delete(photoId);
     const updatedPhotos = photos.filter((p) => p.photoId !== photoId);
@@ -121,6 +134,25 @@ export function PhotoGallery({
                   }}
                 >
                   ✕
+                </button>
+              )}
+              {/* 9-5: サムネイル設定ボタン */}
+              {isAdminMode && (
+                <button
+                  onClick={() => handleSetThumbnail(photo.photoId)}
+                  title="サムネイルに設定"
+                  style={{
+                    position: 'absolute', bottom: 2, right: 2,
+                    width: '18px', height: '18px',
+                    border: 'none', borderRadius: '50%',
+                    background: photo.photoId === thumbnailPhotoId
+                      ? 'rgba(255,200,0,0.9)'
+                      : 'rgba(0,0,0,0.4)',
+                    color: 'white',
+                    fontSize: '10px', cursor: 'pointer', lineHeight: '18px', padding: 0,
+                  }}
+                >
+                  ★
                 </button>
               )}
             </div>

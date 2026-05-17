@@ -2,8 +2,11 @@ import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { Marker } from 'react-leaflet';
+import { useEffect, useState } from 'react';
+import { Marker, Tooltip } from 'react-leaflet';
 import type { Castle } from '../../domain/castle/Castle';
+import type { ImageStorage } from '../../domain/photo/ImageStorage';
+import { CastlePinHoverCard } from './CastlePinHoverCard';
 
 // Vite でビルドすると Leaflet の内部パス解決が壊れるため、_getIconUrl を削除してから上書き
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -17,9 +20,23 @@ L.Icon.Default.mergeOptions({
 interface CastlePinProps {
   castle: Castle;
   onClick?: (castle: Castle) => void;
+  imageStorage: ImageStorage;
 }
 
-export function CastlePin({ castle, onClick }: CastlePinProps) {
+export function CastlePin({ castle, onClick, imageStorage }: CastlePinProps) {
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>();
+
+  useEffect(() => {
+    let cancelled = false;
+    const promise = castle.thumbnailPhotoId
+      ? imageStorage.getUrl(castle.thumbnailPhotoId)
+      : Promise.resolve(undefined);
+    promise.then((url) => {
+      if (!cancelled) setThumbnailUrl(url ?? undefined);
+    });
+    return () => { cancelled = true; };
+  }, [castle.thumbnailPhotoId, imageStorage]);
+
   const position: [number, number] = [
     castle.location.latitude,
     castle.location.longitude,
@@ -31,6 +48,10 @@ export function CastlePin({ castle, onClick }: CastlePinProps) {
       eventHandlers={{
         click: () => onClick?.(castle),
       }}
-    />
+    >
+      <Tooltip>
+        <CastlePinHoverCard name={castle.name} thumbnailUrl={thumbnailUrl} />
+      </Tooltip>
+    </Marker>
   );
 }

@@ -13,4 +13,5 @@ export interface Castle {
   name: string;
   location: Location;
   photos: Photo[];
+  thumbnailPhotoId?: string;
 }

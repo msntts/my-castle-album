@@ -46,7 +46,9 @@ export function CastleDetail({
         photos={castle.photos}
         castleId={castle.castleId}
         isAdminMode={isAdminMode}
+        thumbnailPhotoId={castle.thumbnailPhotoId}
         onPhotosChanged={(photos) => onCastleUpdated({ ...castle, photos })}
+        onThumbnailChanged={(thumbnailPhotoId) => onCastleUpdated({ ...castle, thumbnailPhotoId })}
         imageStorage={imageStorage}
         castleRepository={castleRepository}
       />

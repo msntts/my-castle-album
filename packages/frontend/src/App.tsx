@@ -8,10 +8,12 @@ import { LocalStorageCastleRepository } from './infrastructure/localStorage/Loca
 import { LocalStorageImageStorage } from './infrastructure/localStorage/LocalStorageImageStorage';
 import { seedIfEmpty } from './infrastructure/localStorage/seedData';
 import { AddCastleForm } from './presentation/components/AddCastleForm';
+import { AppLayout } from './presentation/components/AppLayout';
 import { CastleDetail } from './presentation/components/CastleDetail';
 import { CastleMap } from './presentation/components/CastleMap';
 import { CastlePin } from './presentation/components/CastlePin';
 import { LoginModal } from './presentation/components/LoginModal';
+import { MascotCharacter } from './presentation/components/MascotCharacter';
 import { useAuth } from './presentation/hooks/useAuth';
 
 const USE_AWS = import.meta.env.VITE_USE_AWS === 'true';
@@ -32,6 +34,9 @@ function App() {
     if (!selectedCastle || !USE_AWS) return new LocalStorageImageStorage();
     return new AwsImageStorage(selectedCastle.castleId, getAccessToken);
   }, [selectedCastle, getAccessToken]);
+
+  // ピンのホバーサムネイル用。LocalStorage のみで十分（AWS モードでもピン表示は localStorage から）
+  const pinImageStorage: ImageStorage = useMemo(() => new LocalStorageImageStorage(), []);
 
   useEffect(() => {
     const load = async () => {
@@ -71,75 +76,78 @@ function App() {
     }
   }
 
-  function handleSelectCastle(castle: Castle) {
-    setSelectedCastle(castle);
-  }
-
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      <CastleMap>
-        {castles.map((castle) => (
-          <CastlePin
-            key={castle.castleId}
-            castle={castle}
-            onClick={handleSelectCastle}
-          />
-        ))}
-      </CastleMap>
+    <AppLayout
+      mapContent={
+        <CastleMap>
+          {castles.map((castle) => (
+            <CastlePin
+              key={castle.castleId}
+              castle={castle}
+              onClick={setSelectedCastle}
+              imageStorage={pinImageStorage}
+            />
+          ))}
+        </CastleMap>
+      }
+      overlayContent={
+        <>
+          <button
+            onClick={handleAdminToggle}
+            style={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              zIndex: 1000,
+              padding: '8px 14px',
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              background: isAdminMode ? '#c0392b' : '#2c3e50',
+              color: 'white',
+            }}
+          >
+            {isAdminMode ? (USE_AWS ? 'ログアウト' : '管理モード中') : '管理モードへ'}
+          </button>
 
-      <button
-        onClick={handleAdminToggle}
-        style={{
-          position: 'absolute',
-          top: 16,
-          left: 16,
-          zIndex: 1000,
-          padding: '8px 14px',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: 'pointer',
-          fontWeight: 'bold',
-          background: isAdminMode ? '#c0392b' : '#2c3e50',
-          color: 'white',
-        }}
-      >
-        {isAdminMode ? (USE_AWS ? 'ログアウト' : '管理モード中') : '管理モードへ'}
-      </button>
+          {isAdminMode && (
+            <AddCastleForm
+              onAdd={async (castleWithoutPhotos) => {
+                const castle: Castle = { ...castleWithoutPhotos, photos: [] };
+                await repository.save(castle);
+                setCastles((prev) => [...prev, castle]);
+              }}
+            />
+          )}
 
-      {isAdminMode && (
-        <AddCastleForm
-          onAdd={async (castleWithoutPhotos) => {
-            const castle: Castle = { ...castleWithoutPhotos, photos: [] };
-            await repository.save(castle);
-            setCastles((prev) => [...prev, castle]);
-          }}
-        />
-      )}
+          {selectedCastle && (
+            <CastleDetail
+              castle={selectedCastle}
+              isAdminMode={isAdminMode}
+              onClose={() => setSelectedCastle(null)}
+              onCastleUpdated={(updated) => {
+                setCastles((prev) =>
+                  prev.map((c) => (c.castleId === updated.castleId ? updated : c))
+                );
+                setSelectedCastle(updated);
+              }}
+              imageStorage={imageStorage}
+              castleRepository={USE_AWS ? undefined : repository}
+            />
+          )}
 
-      {selectedCastle && (
-        <CastleDetail
-          castle={selectedCastle}
-          isAdminMode={isAdminMode}
-          onClose={() => setSelectedCastle(null)}
-          onCastleUpdated={(updated) => {
-            setCastles((prev) =>
-              prev.map((c) => (c.castleId === updated.castleId ? updated : c))
-            );
-            setSelectedCastle(updated);
-          }}
-          imageStorage={imageStorage}
-          castleRepository={USE_AWS ? undefined : repository}
-        />
-      )}
-
-      {showLogin && (
-        <LoginModal
-          onLogin={handleLogin}
-          onMfa={handleMfa}
-          error={authError}
-        />
-      )}
-    </div>
+          {showLogin && (
+            <LoginModal
+              onLogin={handleLogin}
+              onMfa={handleMfa}
+              error={authError}
+            />
+          )}
+        </>
+      }
+      mascot={<MascotCharacter />}
+    />
   );
 }
 

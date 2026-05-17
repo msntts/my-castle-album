@@ -1,0 +1,31 @@
+.layout {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.mapArea {
+  width: 100%;
+  height: 100%;
+}
+
+/* pointer-events: none でクリックをマップに透過させ、子要素で auto に戻す */
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.overlay > * {
+  pointer-events: auto;
+}
+
+.mascot {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  pointer-events: none;
+}
