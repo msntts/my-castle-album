@@ -4,9 +4,10 @@ interface Props {
   onLogin: (email: string, password: string) => Promise<{ mfaRequired: boolean }>;
   onMfa: (code: string) => Promise<void>;
   error: string | null;
+  onClose?: () => void;
 }
 
-export function LoginModal({ onLogin, onMfa, error }: Props) {
+export function LoginModal({ onLogin, onMfa, error, onClose }: Props) {
   const [step, setStep] = useState<'credentials' | 'mfa'>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,9 +38,16 @@ export function LoginModal({ onLogin, onMfa, error }: Props) {
   }
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
-        <h2 style={{ margin: '0 0 20px', fontSize: '18px' }}>管理者ログイン</h2>
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, fontSize: '18px' }}>管理者ログイン</h2>
+          {onClose && (
+            <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', color: '#666', padding: '0 4px' }}>
+              ✕
+            </button>
+          )}
+        </div>
 
         {step === 'credentials' ? (
           <form onSubmit={handleCredentialsSubmit}>

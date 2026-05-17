@@ -201,6 +201,7 @@ function App() {
               onLogin={handleLogin}
               onMfa={handleMfa}
               error={authError}
+              onClose={() => setShowLogin(false)}
             />
           )}
         </>
