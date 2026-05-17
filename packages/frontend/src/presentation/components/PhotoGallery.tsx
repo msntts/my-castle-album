@@ -26,11 +26,17 @@ export function PhotoGallery({
   castleRepository,
 }: PhotoGalleryProps) {
   const [urls, setUrls] = useState<Record<string, string>>({});
+  const [loadingPhotoIds, setLoadingPhotoIds] = useState<Set<string>>(new Set());
+  const [isUploading, setIsUploading] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
+    const newIds = photos.map((p) => p.photoId).filter((id) => !urls[id]);
+    if (newIds.length > 0) {
+      setLoadingPhotoIds((prev) => new Set([...prev, ...newIds]));
+    }
     Promise.all(
       photos.map(async (photo) => {
         const url = await imageStorage.getUrl(photo.photoId);
@@ -42,9 +48,15 @@ export function PhotoGallery({
       for (const [id, url] of entries) {
         if (url) map[id] = url;
       }
-      setUrls(map);
+      setUrls((prev) => ({ ...prev, ...map }));
+      setLoadingPhotoIds((prev) => {
+        const next = new Set(prev);
+        for (const [id] of entries) next.delete(id);
+        return next;
+      });
     });
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photos, imageStorage]);
 
   const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
@@ -60,40 +72,45 @@ export function PhotoGallery({
       return;
     }
 
-    const CONCURRENCY = 3;
-    const settled: PromiseSettledResult<Photo>[] = [];
-    for (let i = 0; i < files.length; i += CONCURRENCY) {
-      const chunk = files.slice(i, i + CONCURRENCY);
-      const chunkResults = await Promise.allSettled(
-        chunk.map(async (file) => {
-          const photoId = await imageStorage.save(file);
-          return { photoId, castleId } satisfies Photo;
-        }),
-      );
-      settled.push(...chunkResults);
-    }
-
-    const newPhotos = settled
-      .filter((r): r is PromiseFulfilledResult<Photo> => r.status === 'fulfilled')
-      .map((r) => r.value);
-    const failCount = settled.filter((r) => r.status === 'rejected').length;
-    if (failCount > 0) alert(`${failCount} 枚のアップロードに失敗しました。`);
-
-    if (newPhotos.length > 0) {
-      const merged = [...photos];
-      for (const np of newPhotos) {
-        const idx = merged.findIndex((p) => p.photoId === np.photoId);
-        if (idx >= 0) merged[idx] = np;
-        else merged.push(np);
+    setIsUploading(true);
+    try {
+      const CONCURRENCY = 3;
+      const settled: PromiseSettledResult<Photo>[] = [];
+      for (let i = 0; i < files.length; i += CONCURRENCY) {
+        const chunk = files.slice(i, i + CONCURRENCY);
+        const chunkResults = await Promise.allSettled(
+          chunk.map(async (file) => {
+            const photoId = await imageStorage.save(file);
+            return { photoId, castleId } satisfies Photo;
+          }),
+        );
+        settled.push(...chunkResults);
       }
-      const updatedPhotos = merged;
-      if (castleRepository) {
-        const castle = await castleRepository.findById(castleId);
-        if (castle) await castleRepository.save({ ...castle, photos: updatedPhotos });
+
+      const newPhotos = settled
+        .filter((r): r is PromiseFulfilledResult<Photo> => r.status === 'fulfilled')
+        .map((r) => r.value);
+      const failCount = settled.filter((r) => r.status === 'rejected').length;
+      if (failCount > 0) alert(`${failCount} 枚のアップロードに失敗しました。`);
+
+      if (newPhotos.length > 0) {
+        const merged = [...photos];
+        for (const np of newPhotos) {
+          const idx = merged.findIndex((p) => p.photoId === np.photoId);
+          if (idx >= 0) merged[idx] = np;
+          else merged.push(np);
+        }
+        const updatedPhotos = merged;
+        if (castleRepository) {
+          const castle = await castleRepository.findById(castleId);
+          if (castle) await castleRepository.save({ ...castle, photos: updatedPhotos });
+        }
+        onPhotosChanged(updatedPhotos);
       }
-      onPhotosChanged(updatedPhotos);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   async function handleSetThumbnail(photoId: string) {
@@ -140,7 +157,14 @@ export function PhotoGallery({
                     style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: '3px', display: 'block' }}
                   />
                 ) : (
-                  <div style={{ width: '100%', aspectRatio: '1', background: '#eee', borderRadius: '3px' }} />
+                  <div style={{
+                    width: '100%', aspectRatio: '1', borderRadius: '3px',
+                    background: loadingPhotoIds.has(photo.photoId)
+                      ? 'linear-gradient(90deg, #eee 25%, #ddd 50%, #eee 75%)'
+                      : '#eee',
+                    backgroundSize: loadingPhotoIds.has(photo.photoId) ? '200% 100%' : undefined,
+                    animation: loadingPhotoIds.has(photo.photoId) ? 'shimmer 1.2s infinite' : undefined,
+                  }} />
                 )}
               </div>
               {isAdminMode && (
@@ -192,14 +216,16 @@ export function PhotoGallery({
             onChange={handleFileChange}
           />
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !isUploading && fileInputRef.current?.click()}
+            disabled={isUploading}
             style={{
               width: '100%', padding: '8px',
               border: '2px dashed #ccc', borderRadius: '6px',
-              background: 'none', cursor: 'pointer', color: '#666', fontSize: '0.9em',
+              background: 'none', cursor: isUploading ? 'not-allowed' : 'pointer',
+              color: isUploading ? '#aaa' : '#666', fontSize: '0.9em',
             }}
           >
-            + 写真を追加（複数可）
+            {isUploading ? 'アップロード中...' : '+ 写真を追加（複数可）'}
           </button>
         </>
       )}

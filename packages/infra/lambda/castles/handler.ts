@@ -133,7 +133,9 @@ async function updateCastle(
     return badRequest("name (string), latitude (number), longitude (number) are required");
   }
   const thumbnailPhotoId =
-    typeof body.thumbnailPhotoId === "string" && /^[0-9A-Z]{26}$/.test(body.thumbnailPhotoId)
+    typeof body.thumbnailPhotoId === "string" &&
+    /^[A-Za-z0-9\-._~!*'()%]+$/.test(body.thumbnailPhotoId) &&
+    body.thumbnailPhotoId.length <= 512
       ? body.thumbnailPhotoId
       : undefined;
   const item: Record<string, unknown> = {
