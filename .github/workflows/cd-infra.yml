@@ -57,6 +57,7 @@ jobs:
         working-directory: packages/infra
         env:
           TF_VAR_alert_email: ${{ secrets.TF_VAR_ALERT_EMAIL }}
+          TF_VAR_frontend_origin: ${{ secrets.VITE_CLOUDFRONT_DOMAIN }}
 
       - name: Terraform Apply
         run: terraform apply -input=false tfplan
